@@ -273,6 +273,16 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
      alert(`开始打包下载 ${typeText} ${rangeText}...`);
   };
 
+  const handleSingleVideoDownload = (url: string) => {
+      // Create a temporary anchor to trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `video-${Date.now()}.mp4`; // Mock filename
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+  };
+
   const handleExportToEditor = () => {
      // Gather selected videos
      const clips: TimelineClip[] = [];
@@ -590,6 +600,15 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                                             </button>
                                         </>
                                     )}
+                                    
+                                    {/* Download Button on Hover */}
+                                    <button
+                                       onClick={(e) => { e.stopPropagation(); handleSingleVideoDownload(activeVideoUrl); }}
+                                       className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-blue-600 text-white rounded-lg opacity-0 group-hover/media:opacity-100 transition-all z-20 backdrop-blur-sm"
+                                       title="下载此视频"
+                                    >
+                                       <Download size={18} />
+                                    </button>
 
                                     {/* Pagination Dots */}
                                     {versions.length > 1 && (

@@ -549,6 +549,10 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   const activeModalState = activeAsset && selectedStateId 
     ? activeAsset.states.find(s => s.id === selectedStateId) 
     : null;
+  
+  // Find initial state (first state) for reference
+  const initialAssetState = activeAsset ? activeAsset.states[0] : null;
+  const isViewingInitialState = activeModalState && initialAssetState && activeModalState.id === initialAssetState.id;
 
   // --- SubTab Handling ---
   if (subTab === AssetSubTab.TTS) {
@@ -987,6 +991,24 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                               </div>
                            </div>
                            
+                           {/* Show reference image from Initial State if we are NOT viewing the initial state */}
+                           {!isViewingInitialState && initialAssetState && initialAssetState.mainImageUrl && (
+                              <div className="mb-4 bg-slate-900 border border-slate-800 rounded-lg p-2 flex items-center gap-3">
+                                 <div className="w-16 h-16 rounded bg-black overflow-hidden shrink-0 border border-slate-700">
+                                    <img src={initialAssetState.mainImageUrl} alt="Reference" className="w-full h-full object-cover" />
+                                 </div>
+                                 <div className="flex-1">
+                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">参考图 (Reference)</div>
+                                    <div className="text-xs text-slate-500">
+                                       来自: <span className="text-blue-400">{initialAssetState.name}</span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-600 mt-1">
+                                       基于此常规状态进行图生图变体生成。
+                                    </div>
+                                 </div>
+                              </div>
+                           )}
+
                            <div className="relative">
                               <textarea 
                                 value={activeModalState.prompt || ''}

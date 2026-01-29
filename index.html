@@ -5,15 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Video Workflow Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        /* Default (Dark / 黑夜模式) */
+        --slate-950: #020617; /* Main Background */
+        --slate-900: #0f172a; /* Panels/Cards */
+        --slate-800: #1e293b; /* Borders */
+        --slate-700: #334155; /* Hover Borders */
+        --slate-600: #475569; /* Muted Text/Icons */
+        --slate-500: #64748b; /* Subtext */
+        --slate-400: #94a3b8; /* Secondary Text */
+        --slate-300: #cbd5e1;
+        --slate-200: #e2e8f0; /* Primary Text */
+        --slate-100: #f1f5f9;
+        --slate-50:  #f8fafc;
+      }
+
+      [data-theme='light'] {
+        /* Daylight (日光模式) - Inverted Logic */
+        --slate-950: #f8fafc; /* Light BG */
+        --slate-900: #ffffff; /* White Panels */
+        --slate-800: #e2e8f0; /* Light Borders */
+        --slate-700: #cbd5e1;
+        --slate-600: #94a3b8;
+        --slate-500: #64748b;
+        --slate-400: #475569; /* Darker Secondary Text */
+        --slate-300: #334155;
+        --slate-200: #0f172a; /* Dark Primary Text */
+        --slate-100: #020617;
+        --slate-50:  #020617;
+      }
+
+      [data-theme='camo'] {
+        /* Camo (迷彩模式) - Forest Greens */
+        --slate-950: #1a2e05; /* Deep Green BG */
+        --slate-900: #283f09; /* Panel Green */
+        --slate-800: #3f6212; /* Border Green */
+        --slate-700: #4d7c0f;
+        --slate-600: #65a30d;
+        --slate-500: #84cc16;
+        --slate-400: #a3e635; /* Lime Text */
+        --slate-300: #bef264;
+        --slate-200: #ecfccb; /* Pale Lime Text */
+        --slate-100: #f7fee7;
+        --slate-50:  #f7fee7;
+      }
+
+      [data-theme='purple'] {
+        /* Electric Purple (电光紫) - Cyberpunk */
+        --slate-950: #1a032b; /* Deep Void */
+        --slate-900: #2e0545; /* Dark Violet Panel */
+        --slate-800: #4c0d70; /* Purple Border */
+        --slate-700: #6b18a1;
+        --slate-600: #8b2ecf;
+        --slate-500: #a855f7;
+        --slate-400: #c084fc; /* Lavender Text */
+        --slate-300: #d8b4fe;
+        --slate-200: #f3e8ff; /* White-ish Purple Text */
+        --slate-100: #faf5ff;
+        --slate-50:  #faf5ff;
+      }
+    </style>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
               slate: {
-                850: '#1e293b',
-                900: '#0f172a',
-                950: '#020617',
+                950: 'var(--slate-950)',
+                900: 'var(--slate-900)',
+                850: '#1e293b', /* Keep hardcoded or map if needed */
+                800: 'var(--slate-800)',
+                700: 'var(--slate-700)',
+                600: 'var(--slate-600)',
+                500: 'var(--slate-500)',
+                400: 'var(--slate-400)',
+                300: 'var(--slate-300)',
+                200: 'var(--slate-200)',
+                100: 'var(--slate-100)',
+                50:  'var(--slate-50)',
               }
             }
           }
