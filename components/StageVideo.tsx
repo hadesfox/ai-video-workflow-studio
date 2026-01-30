@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Shot, Asset, Episode, ExtendedShot, VideoSettings, TimelineClip } from '../types';
-import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, Plus, Sparkles, RefreshCcw, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Shot, Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError } from '../types';
+import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, Plus, Sparkles, RefreshCcw, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, Save, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface StageVideoProps {
   episodes: Episode[];
@@ -11,9 +11,11 @@ interface StageVideoProps {
   setEditorClips: React.Dispatch<React.SetStateAction<TimelineClip[]>>;
   goToAssets: () => void;
   onNext: () => void;
+  hasVisitedVideo: boolean;
+  setHasVisitedVideo: (visited: boolean) => void;
 }
 
-const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, videoSettings, setVideoSettings, setEditorClips, goToAssets, onNext }) => {
+const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, videoSettings, setVideoSettings, setEditorClips, goToAssets, onNext, hasVisitedVideo, setHasVisitedVideo }) => {
   // --- Sidebar & Layout State ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isPinned, setIsPinned] = useState(false); // Default to unpinned per request
@@ -23,11 +25,20 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
   const [activeEpisodeId, setActiveEpisodeId] = useState<string>('ep1');
 
   // --- Generation State ---
-  const [generating, setGenerating] = useState(false); // Global generating state (for batch)
+  const [generating, setGenerating] = useState(false); // Global generating state (for storyboard)
   const [videoGeneratingMap, setVideoGeneratingMap] = useState<Record<string, boolean>>({});
+  const [isBatchGenerating, setIsBatchGenerating] = useState(false); // Batch generation lock
+
+  // --- Error Handling State ---
+  const [errors, setErrors] = useState<GenerationError[]>([]);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [expandedErrorId, setExpandedErrorId] = useState<string | null>(null);
 
   // --- Settings State ---
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // --- New Bubble Tracking State ---
+  const [viewedShots, setViewedShots] = useState<Set<string>>(new Set());
 
   // --- Modal States ---
   const [downloadModal, setDownloadModal] = useState<{
@@ -46,8 +57,19 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
     actionLabel: string;
   }>({ isOpen: false, title: '', message: '', actionLabel: '' });
 
+  // Prompt Editing State
+  const [editingShotId, setEditingShotId] = useState<string | null>(null);
+
   // Get active episode data
   const activeEpisode = episodes.find(e => e.id === activeEpisodeId);
+
+  // Initial Load Effect for Settings (Controlled by App state)
+  useEffect(() => {
+      if (!hasVisitedVideo) {
+          setShowSettingsModal(true);
+          setHasVisitedVideo(true);
+      }
+  }, [hasVisitedVideo, setHasVisitedVideo]);
 
   // --- Helpers ---
 
@@ -134,9 +156,11 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
        });
        return;
     }
+    
     setGenerating(true);
     setTimeout(() => {
-      const newShots: ExtendedShot[] = Array.from({ length: 4 }).map((_, idx) => ({
+      // Increased length to 10 for better testing
+      const newShots: ExtendedShot[] = Array.from({ length: 10 }).map((_, idx) => ({
         id: `shot-${activeEpisodeId}-${Date.now()}-${idx}`,
         description: generateShotPrompt(idx),
         duration: 3 + Math.floor(Math.random() * 5),
@@ -165,10 +189,19 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
     const idsToGen = activeEpisode.shots.filter(s => s.status === 'PENDING').map(s => s.id);
     if (idsToGen.length === 0) return;
 
+    setIsBatchGenerating(true); // Disable global buttons
+
     setVideoGeneratingMap(prev => {
       const next = { ...prev };
       idsToGen.forEach(id => next[id] = true);
       return next;
+    });
+
+    // Reset viewed status for these shots so "New" bubbles appear
+    setViewedShots(prev => {
+        const next = new Set(prev);
+        idsToGen.forEach(id => next.delete(id));
+        return next;
     });
 
     setEpisodes(prev => prev.map(ep => {
@@ -179,9 +212,9 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
       };
     }));
 
+    // Generate in staggered manner
     idsToGen.forEach((id, idx) => {
       setTimeout(() => {
-        // Mocking: Append type to URL so we can theoretically see a diff, though visually random seed handles it
         const newVideoUrl = `https://picsum.photos/seed/${id}-${type}/800/450`;
         setEpisodes(prev => prev.map(ep => {
            if (ep.id !== activeEpisodeId) return ep;
@@ -196,6 +229,11 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
            };
         }));
         setVideoGeneratingMap(prev => ({ ...prev, [id]: false }));
+        
+        // Unlock batch button when last item finishes
+        if (idx === idsToGen.length - 1) {
+            setIsBatchGenerating(false);
+        }
       }, 2000 + (idx * 1500));
     });
   };
@@ -212,6 +250,14 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
       return;
     }
     setVideoGeneratingMap(prev => ({ ...prev, [shotId]: true }));
+    
+    // Remove from viewed so "New" appears later
+    setViewedShots(prev => {
+        const next = new Set(prev);
+        next.delete(shotId);
+        return next;
+    });
+
     setEpisodes(prev => prev.map(ep => {
       if (ep.id !== activeEpisodeId) return ep;
       return {
@@ -221,27 +267,50 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
     }));
 
     setTimeout(() => {
-        const newVideoUrl = `https://picsum.photos/seed/${shotId}-${type}-${Date.now()}/800/450`;
-        setEpisodes(prev => prev.map(ep => {
-            if (ep.id !== activeEpisodeId) return ep;
-            return {
-                ...ep,
-                shots: ep.shots.map(s => {
-                    if (s.id !== shotId) return s;
-                    const updatedVersions = [...(s.videoVersions || []), newVideoUrl];
-                    setActiveVideoIndices(prevIndices => ({
-                        ...prevIndices,
-                        [shotId]: updatedVersions.length - 1
-                    }));
-                    return { 
-                        ...s, 
-                        status: 'COMPLETED',
-                        videoUrl: newVideoUrl,
-                        videoVersions: updatedVersions
-                    };
-                })
+        // Randomly simulate an error (20% chance)
+        const isError = Math.random() < 0.2;
+
+        if (isError) {
+            const errorData: GenerationError = {
+                id: Date.now().toString(),
+                episodeName: activeEpisode?.name || 'Unknown Episode',
+                shotIndex: activeEpisode?.shots.findIndex(s => s.id === shotId)! + 1,
+                message: "生成请求超时或被拒绝",
+                detail: `ErrorCode: 504 - Gateway Timeout. \nPrompt: ... \nModel: ${type === 'IMAGE' ? 'Image-to-Video' : 'Subject-to-Video'}`,
+                timestamp: new Date()
             };
-        }));
+            setErrors(prev => [errorData, ...prev]);
+            
+            setEpisodes(prev => prev.map(ep => {
+                if (ep.id !== activeEpisodeId) return ep;
+                return {
+                    ...ep,
+                    shots: ep.shots.map(s => s.id === shotId ? { ...s, status: 'ERROR' } : s)
+                };
+            }));
+        } else {
+            const newVideoUrl = `https://picsum.photos/seed/${shotId}-${type}-${Date.now()}/800/450`;
+            setEpisodes(prev => prev.map(ep => {
+                if (ep.id !== activeEpisodeId) return ep;
+                return {
+                    ...ep,
+                    shots: ep.shots.map(s => {
+                        if (s.id !== shotId) return s;
+                        const updatedVersions = [...(s.videoVersions || []), newVideoUrl];
+                        setActiveVideoIndices(prevIndices => ({
+                            ...prevIndices,
+                            [shotId]: updatedVersions.length - 1
+                        }));
+                        return { 
+                            ...s, 
+                            status: 'COMPLETED',
+                            videoUrl: newVideoUrl,
+                            videoVersions: updatedVersions
+                        };
+                    })
+                };
+            }));
+        }
         setVideoGeneratingMap(prev => ({ ...prev, [shotId]: false }));
     }, 2500);
   };
@@ -254,6 +323,21 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
            shots: ep.shots.map(s => s.id === shotId ? { ...s, description: newText } : s)
         };
      }));
+  };
+
+  const markAsViewed = (shotId: string) => {
+      if (!viewedShots.has(shotId)) {
+          setViewedShots(prev => new Set(prev).add(shotId));
+      }
+  };
+
+  const handleEnterFullscreen = (elementId: string) => {
+      const el = document.getElementById(elementId);
+      if (el) {
+          if (el.requestFullscreen) {
+              el.requestFullscreen();
+          }
+      }
   };
 
   // --- Download & Export Logic ---
@@ -388,6 +472,25 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
      };
   }, [downloadModal.type, downloadModal.includeHistory, activeEpisode, episodes]);
 
+  // Helper to render highlighted prompt text
+  const renderHighlightedPrompt = (text: string) => {
+      const parts = text.split(/(【@[^】]+】)/g);
+      return (
+          <>
+              {parts.map((part, index) => {
+                  if (part.startsWith('【@') && part.endsWith('】')) {
+                      return (
+                          <span key={index} className="text-blue-400 font-bold bg-blue-500/10 px-1 rounded mx-0.5">
+                              {part}
+                          </span>
+                      );
+                  }
+                  return <span key={index}>{part}</span>;
+              })}
+          </>
+      );
+  };
+
 
   // --- Render ---
 
@@ -456,12 +559,25 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
       >
          
          {/* Top Header */}
-         <div className="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur flex items-center justify-between px-6 shrink-0">
+         <div className="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur flex items-center justify-between px-6 shrink-0 relative">
             <div className={`flex items-center gap-3 transition-all ${!isSidebarOpen ? 'pl-12' : ''}`}>
                <Film className="text-purple-500" size={20} />
                <h2 className="text-lg font-bold text-white">{activeEpisode?.name}</h2>
             </div>
             
+            {/* Center: Error Notification */}
+            {errors.length > 0 && (
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <button 
+                        onClick={() => setShowErrorModal(true)}
+                        className="flex items-center gap-2 px-4 py-1.5 bg-red-500/10 border border-red-500/50 text-red-400 rounded-full text-xs font-bold hover:bg-red-500/20 hover:text-red-300 transition-all animate-pulse"
+                    >
+                        <AlertCircle size={14} />
+                        <span>生成出错 ({errors.length})</span>
+                    </button>
+                </div>
+            )}
+
             <div className="flex items-center gap-3">
                <button 
                   onClick={(e) => { e.stopPropagation(); handleFullDownload(); }}
@@ -488,8 +604,9 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
             <div className="flex items-center gap-3">
                <button 
                   onClick={(e) => { e.stopPropagation(); handleGenerateStoryboard(); }}
-                  disabled={generating}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-indigo-900/20 disabled:opacity-50 transition-all active:scale-95"
+                  disabled={generating || (activeEpisode?.shots.length || 0) > 0} 
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                  title={(activeEpisode?.shots.length || 0) > 0 ? "分镜已生成" : "生成分镜"}
                >
                   {generating ? <Loader2 className="animate-spin" size={16} /> : <Clapperboard size={16} />}
                   <span>生成分镜</span>
@@ -499,9 +616,10 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                {/* Global Action 1: Subject Video */}
                <button 
                   onClick={(e) => { e.stopPropagation(); handleOneClickVideo('SUBJECT'); }}
-                  disabled={!activeEpisode?.shots.length}
+                  disabled={!activeEpisode?.shots.length || isBatchGenerating}
                   className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-purple-900/20 disabled:opacity-50 transition-all active:scale-95"
                >
+                  {isBatchGenerating && <Loader2 className="animate-spin" size={16} />}
                   <User size={16} />
                   <span>一键生成主体视频</span>
                </button>
@@ -509,9 +627,10 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                {/* Global Action 2: Image Video */}
                <button 
                   onClick={(e) => { e.stopPropagation(); handleOneClickVideo('IMAGE'); }}
-                  disabled={!activeEpisode?.shots.length}
+                  disabled={!activeEpisode?.shots.length || isBatchGenerating}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-900/20 disabled:opacity-50 transition-all active:scale-95"
                >
+                  {isBatchGenerating && <Loader2 className="animate-spin" size={16} />}
                   <ImageIcon size={16} />
                   <span>一键生成图生视频</span>
                </button>
@@ -535,233 +654,316 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
             </div>
          </div>
 
-         {/* Content: Storyboard Grid */}
-         <div className="flex-1 overflow-y-auto p-6 bg-slate-950 relative scroll-smooth pr-16"> 
-            {!activeEpisode?.shots.length ? (
-               <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
-                  <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mb-6 border border-slate-800">
-                     <Clapperboard size={48} className="opacity-20" />
-                  </div>
-                  <h3 className="text-xl font-medium text-slate-300 mb-2">暂无分镜</h3>
-                  <p className="max-w-md text-center text-sm mb-6">
-                     该分集尚未生成任何分镜脚本。请点击右上角的 "生成分镜" 按钮，AI 将基于剧本和资产自动构建画面。
-                  </p>
-                  <button 
-                     onClick={(e) => { e.stopPropagation(); handleGenerateStoryboard(); }}
-                     className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium shadow-lg"
-                  >
-                     立即生成分镜
-                  </button>
-               </div>
-            ) : (
-               <div className="grid grid-cols-1 gap-6 max-w-6xl mx-auto pb-20">
-                  {activeEpisode.shots.map((shot, index) => {
-                     const linkedAssets = extractAssetsFromPrompt(shot.description);
-                     const isVideoGenerating = videoGeneratingMap[shot.id];
-                     
-                     // Handle Multi-Version Logic
-                     const versions = getShotVersions(shot);
-                     const activeIndex = activeVideoIndices[shot.id] ?? (versions.length > 0 ? versions.length - 1 : 0);
-                     const activeVideoUrl = versions[activeIndex];
-                     const hasVideo = !!activeVideoUrl && shot.status === 'COMPLETED';
+         {/* Content Area: Split View */}
+         <div className="flex-1 flex overflow-hidden">
+            
+            {/* Left: Script Content (Sticky/Scrollable) */}
+            {activeEpisode && (
+                <div className="w-1/3 min-w-[320px] max-w-[480px] bg-slate-950 border-r border-slate-800 p-6 overflow-y-auto custom-scrollbar">
+                    <div className="mb-4 flex items-center gap-2 text-slate-400">
+                        <FileText size={18} />
+                        <h3 className="font-bold text-sm uppercase tracking-wider">本集剧本</h3>
+                    </div>
+                    <div className="prose prose-invert prose-sm max-w-none text-slate-300 font-mono leading-relaxed whitespace-pre-wrap">
+                        {activeEpisode.scriptContent || "暂无剧本内容..."}
+                    </div>
+                </div>
+            )}
 
-                     return (
-                        <div 
-                           id={`shot-card-${shot.id}`}
-                           key={shot.id} 
-                           className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col md:flex-row group hover:border-slate-600 transition-colors shadow-sm"
-                        >
-                           
-                           {/* Left: Video Preview (Larger Size) */}
-                           <div className="w-full md:w-[480px] aspect-video bg-black relative shrink-0 border-r border-slate-800 group/media">
-                              {hasVideo ? (
-                                 <div className="relative w-full h-full flex items-center justify-center bg-black">
-                                    <img src={activeVideoUrl} className="w-full h-full object-cover opacity-90" alt="Generated Video" />
-                                    
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                       <button className="bg-white/20 backdrop-blur-sm p-3 rounded-full transition-transform transform scale-100 opacity-60">
-                                          <Play className="fill-white text-white ml-1" size={24} />
-                                       </button>
+            {/* Right: Storyboard Grid */}
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-900/50 relative scroll-smooth pr-16 custom-scrollbar"> 
+                {!activeEpisode?.shots.length ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
+                    <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mb-6 border border-slate-800">
+                        <Clapperboard size={48} className="opacity-20" />
+                    </div>
+                    <h3 className="text-xl font-medium text-slate-300 mb-2">暂无分镜</h3>
+                    <p className="max-w-md text-center text-sm mb-6">
+                        该分集尚未生成任何分镜脚本。请点击右上角的 "生成分镜" 按钮，AI 将基于剧本和资产自动构建画面。
+                    </p>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); handleGenerateStoryboard(); }}
+                        className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium shadow-lg"
+                    >
+                        立即生成分镜
+                    </button>
+                </div>
+                ) : (
+                <div className="grid grid-cols-1 gap-6 max-w-5xl mx-auto pb-20">
+                    {activeEpisode.shots.map((shot, index) => {
+                        const linkedAssets = extractAssetsFromPrompt(shot.description);
+                        const isVideoGenerating = videoGeneratingMap[shot.id];
+                        
+                        // Handle Multi-Version Logic
+                        const versions = getShotVersions(shot);
+                        const activeIndex = activeVideoIndices[shot.id] ?? (versions.length > 0 ? versions.length - 1 : 0);
+                        const activeVideoUrl = versions[activeIndex];
+                        const hasVideo = !!activeVideoUrl && shot.status === 'COMPLETED';
+                        const isError = shot.status === 'ERROR';
+                        const isEditing = editingShotId === shot.id;
+
+                        return (
+                            <div 
+                            id={`shot-card-${shot.id}`}
+                            key={shot.id} 
+                            className={`bg-slate-900 border rounded-xl overflow-hidden flex flex-col md:flex-row group transition-colors shadow-sm ${isError ? 'border-red-500/50' : 'border-slate-800 hover:border-slate-600'}`}
+                            >
+                            
+                            {/* Left: Video Preview (Larger Size) */}
+                            <div className="w-full md:w-[420px] aspect-video bg-black relative shrink-0 border-r border-slate-800 group/media">
+                                {hasVideo ? (
+                                    <div className="relative w-full h-full flex items-center justify-center bg-black">
+                                        {/* Use img to display preview since these are dummy URLs */}
+                                        <img 
+                                            id={`video-${shot.id}`} 
+                                            src={activeVideoUrl} 
+                                            className="w-full h-full object-cover opacity-90" 
+                                            alt={`Shot ${index + 1}`}
+                                        />
+                                        
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        {/* Play Button - marks as viewed on click */}
+                                        <button 
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                markAsViewed(shot.id); 
+                                            }}
+                                            className="bg-white/20 backdrop-blur-sm p-3 rounded-full transition-transform transform scale-100 opacity-60 hover:opacity-100 hover:scale-110 pointer-events-auto"
+                                        >
+                                            <Play className="fill-white text-white ml-1" size={24} />
+                                        </button>
+                                        </div>
+                                        
+                                        {versions.length > 1 && (
+                                            <>
+                                                <button 
+                                                    onClick={(e) => handlePrevVideo(e, shot.id, versions.length)}
+                                                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/40 hover:bg-black/80 rounded-full text-white backdrop-blur-sm transition-opacity opacity-0 group-hover/media:opacity-100 z-10"
+                                                >
+                                                    <ChevronLeft size={20} />
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => handleNextVideo(e, shot.id, versions.length)}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/40 hover:bg-black/80 rounded-full text-white backdrop-blur-sm transition-opacity opacity-0 group-hover/media:opacity-100 z-10"
+                                                >
+                                                    <ChevronRight size={20} />
+                                                </button>
+                                            </>
+                                        )}
+                                        
+                                        {/* Action Buttons on Hover */}
+                                        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover/media:opacity-100 transition-all z-20">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleSingleVideoDownload(activeVideoUrl); }}
+                                                className="p-2 bg-black/60 hover:bg-blue-600 text-white rounded-lg backdrop-blur-sm"
+                                                title="下载此视频"
+                                            >
+                                                <Download size={18} />
+                                            </button>
+                                        </div>
+
+                                        {/* Fullscreen Button on Hover (Bottom Right) */}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleEnterFullscreen(`video-${shot.id}`); }}
+                                            className="absolute bottom-2 right-2 p-2 bg-black/60 hover:bg-white/20 text-white rounded-lg opacity-0 group-hover/media:opacity-100 transition-all z-20 backdrop-blur-sm pointer-events-auto"
+                                            title="全屏预览"
+                                        >
+                                            <Maximize2 size={18} />
+                                        </button>
+
+                                        {/* Pagination Dots */}
+                                        {versions.length > 1 && (
+                                            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10 pointer-events-none">
+                                                {versions.map((_, vIdx) => (
+                                                    <div 
+                                                        key={vIdx}
+                                                        className={`w-1.5 h-1.5 rounded-full shadow-sm transition-all ${vIdx === activeIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 bg-slate-950 relative">
+                                        {isVideoGenerating || shot.status === 'GENERATING' ? (
+                                        <>
+                                            <Loader2 className="animate-spin text-purple-500 mb-2" size={32} />
+                                            <span className="text-xs text-purple-400 font-medium animate-pulse">视频生成中...</span>
+                                        </>
+                                        ) : isError ? (
+                                            <>
+                                                <AlertCircle size={32} className="text-red-500 mb-2" />
+                                                <span className="text-xs text-red-400">生成失败</span>
+                                            </>
+                                        ) : (
+                                        <>
+                                            <Video size={32} className="opacity-20 mb-2" />
+                                            <span className="text-xs">等待生成</span>
+                                        </>
+                                        )}
+                                        
+                                        {!isVideoGenerating && shot.status !== 'GENERATING' && (
+                                        <div className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 backdrop-blur-sm transition-all flex-col gap-2">
+                                            {/* Buttons for quick access on overlay */}
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleSingleShotGenerate(shot.id, 'IMAGE')} className="p-2 bg-blue-600 rounded-lg text-white shadow" title="图生视频"><ImageIcon size={16}/></button>
+                                                <button onClick={() => handleSingleShotGenerate(shot.id, 'SUBJECT')} className="p-2 bg-purple-600 rounded-lg text-white shadow" title="主体生视频"><User size={16}/></button>
+                                                <button onClick={() => handleSingleShotGenerate(shot.id, 'SCENE')} className="p-2 bg-emerald-600 rounded-lg text-white shadow" title="场景图生视频"><Map size={16}/></button>
+                                            </div>
+                                            <span className="text-xs text-white font-medium">选择生成模式</span>
+                                        </div>
+                                        )}
+                                    </div>
+                                )}
+                                
+                                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur px-2 py-0.5 rounded text-xs text-white font-mono border border-white/10 pointer-events-none">
+                                    SHOT {String(index + 1).padStart(2, '0')}
+                                </div>
+                                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur px-2 py-0.5 rounded text-[10px] text-slate-300 border border-white/10 pointer-events-none">
+                                    {shot.duration}s
+                                </div>
+                            </div>
+
+                            {/* Right: Controls & Prompt */}
+                            <div className="flex-1 p-5 flex flex-col min-w-0">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <Wand2 size={14} className="text-indigo-400" />
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">分镜提示词 (Prompt)</label>
+                                        <button 
+                                            onClick={() => setEditingShotId(isEditing ? null : shot.id)}
+                                            className="text-slate-500 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
+                                            title={isEditing ? "完成编辑" : "修改提示词"}
+                                        >
+                                            {isEditing ? <CheckCircle2 size={14} className="text-emerald-500"/> : <Edit3 size={14} />}
+                                        </button>
                                     </div>
                                     
-                                    {versions.length > 1 && (
-                                        <>
-                                            <button 
-                                                onClick={(e) => handlePrevVideo(e, shot.id, versions.length)}
-                                                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/40 hover:bg-black/80 rounded-full text-white backdrop-blur-sm transition-opacity opacity-0 group-hover/media:opacity-100 z-10"
-                                            >
-                                                <ChevronLeft size={20} />
-                                            </button>
-                                            <button 
-                                                onClick={(e) => handleNextVideo(e, shot.id, versions.length)}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/40 hover:bg-black/80 rounded-full text-white backdrop-blur-sm transition-opacity opacity-0 group-hover/media:opacity-100 z-10"
-                                            >
-                                                <ChevronRight size={20} />
-                                            </button>
-                                        </>
-                                    )}
-                                    
-                                    {/* Download Button on Hover */}
-                                    <button
-                                       onClick={(e) => { e.stopPropagation(); handleSingleVideoDownload(activeVideoUrl); }}
-                                       className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-blue-600 text-white rounded-lg opacity-0 group-hover/media:opacity-100 transition-all z-20 backdrop-blur-sm"
-                                       title="下载此视频"
-                                    >
-                                       <Download size={18} />
-                                    </button>
+                                    {/* 3 Separate Generate Buttons */}
+                                    <div className="flex items-center gap-1.5">
+                                        <button 
+                                            onClick={() => handleSingleShotGenerate(shot.id, 'IMAGE')}
+                                            disabled={isVideoGenerating || shot.status === 'GENERATING'}
+                                            className="flex items-center gap-1 px-2 py-1.5 bg-slate-800 hover:bg-blue-600 hover:text-white border border-slate-700 text-slate-300 rounded text-xs transition-all disabled:opacity-50"
+                                            title="图生视频"
+                                        >
+                                            <ImageIcon size={12} />
+                                            <span>图生视频</span>
+                                        </button>
+                                        <button 
+                                            onClick={() => handleSingleShotGenerate(shot.id, 'SUBJECT')}
+                                            disabled={isVideoGenerating || shot.status === 'GENERATING'}
+                                            className="flex items-center gap-1 px-2 py-1.5 bg-slate-800 hover:bg-purple-600 hover:text-white border border-slate-700 text-slate-300 rounded text-xs transition-all disabled:opacity-50"
+                                            title="主体生视频"
+                                        >
+                                            <User size={12} />
+                                            <span>主体生视频</span>
+                                        </button>
+                                        <button 
+                                            onClick={() => handleSingleShotGenerate(shot.id, 'SCENE')}
+                                            disabled={isVideoGenerating || shot.status === 'GENERATING'}
+                                            className="flex items-center gap-1 px-2 py-1.5 bg-slate-800 hover:bg-emerald-600 hover:text-white border border-slate-700 text-slate-300 rounded text-xs transition-all disabled:opacity-50"
+                                            title="场景图生视频"
+                                        >
+                                            <Map size={12} />
+                                            <span>场景图生视频</span>
+                                        </button>
+                                    </div>
+                                </div>
 
-                                    {/* Pagination Dots */}
-                                    {versions.length > 1 && (
-                                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
-                                            {versions.map((_, vIdx) => (
-                                                <div 
-                                                    key={vIdx}
-                                                    className={`w-1.5 h-1.5 rounded-full shadow-sm transition-all ${vIdx === activeIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
-                                                />
-                                            ))}
+                                {/* Highlighted Prompt Editor (Backdrop Method) */}
+                                <div className="relative w-full h-28 border border-slate-800 rounded-lg overflow-hidden bg-slate-950">
+                                    {isEditing ? (
+                                        <>
+                                            {/* Backdrop for highlighting */}
+                                            <div className="absolute inset-0 p-3 text-sm font-mono leading-relaxed whitespace-pre-wrap break-words z-0 overflow-y-auto pointer-events-none text-slate-200">
+                                                {renderHighlightedPrompt(shot.description)}
+                                            </div>
+                                            {/* Transparent Textarea for input */}
+                                            <textarea 
+                                                value={shot.description}
+                                                onChange={(e) => handleShotPromptChange(shot.id, e.target.value)}
+                                                className="absolute inset-0 w-full h-full p-3 bg-transparent text-sm font-mono leading-relaxed text-transparent caret-slate-200 focus:outline-none resize-none z-10 overflow-y-auto custom-scrollbar"
+                                                autoFocus
+                                                spellCheck={false}
+                                            />
+                                        </>
+                                    ) : (
+                                        <div className="p-3 text-sm text-slate-200 leading-relaxed font-mono whitespace-pre-wrap overflow-y-auto h-full custom-scrollbar">
+                                            {renderHighlightedPrompt(shot.description)}
                                         </div>
                                     )}
-                                 </div>
-                              ) : (
-                                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 bg-slate-950 relative">
-                                    {isVideoGenerating || shot.status === 'GENERATING' ? (
-                                       <>
-                                          <Loader2 className="animate-spin text-purple-500 mb-2" size={32} />
-                                          <span className="text-xs text-purple-400 font-medium animate-pulse">视频生成中...</span>
-                                       </>
+                                </div>
+
+                                <div className="mt-auto pt-4 border-t border-slate-800/50">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <ImageIcon size={14} className="text-emerald-400" />
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">关联资产</label>
+                                    </div>
+                                    {linkedAssets.length > 0 ? (
+                                        <div className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar">
+                                        {linkedAssets.map((asset, i) => (
+                                            <div key={i} className="flex items-center gap-2 bg-slate-800 rounded-lg pr-3 pl-1 py-1 border border-slate-700 shrink-0">
+                                                <div className="w-8 h-8 rounded bg-black overflow-hidden shrink-0">
+                                                    <img src={asset.url} alt="" className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-xs font-medium text-slate-200 truncate max-w-[100px]">{asset.name.replace('【@', '').replace('】', '').split('-')[0]}</span>
+                                                    <span className="text-[10px] text-slate-500 truncate max-w-[100px]">{asset.name.replace('【@', '').replace('】', '').split('-')[1]}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        </div>
                                     ) : (
-                                       <>
-                                          <Video size={32} className="opacity-20 mb-2" />
-                                          <span className="text-xs">等待生成</span>
-                                       </>
+                                        <div className="text-xs text-slate-600 italic pl-1">
+                                        未检测到关联资产。
+                                        </div>
                                     )}
-                                    
-                                    {!isVideoGenerating && shot.status !== 'GENERATING' && (
-                                       <div className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 backdrop-blur-sm transition-all flex-col gap-2">
-                                           {/* Buttons for quick access on overlay */}
-                                           <div className="flex gap-2">
-                                               <button onClick={() => handleSingleShotGenerate(shot.id, 'IMAGE')} className="p-2 bg-blue-600 rounded-lg text-white shadow" title="图生视频"><ImageIcon size={16}/></button>
-                                               <button onClick={() => handleSingleShotGenerate(shot.id, 'SUBJECT')} className="p-2 bg-purple-600 rounded-lg text-white shadow" title="主体生视频"><User size={16}/></button>
-                                               <button onClick={() => handleSingleShotGenerate(shot.id, 'SCENE')} className="p-2 bg-emerald-600 rounded-lg text-white shadow" title="场景图生视频"><Map size={16}/></button>
-                                           </div>
-                                           <span className="text-xs text-white font-medium">选择生成模式</span>
-                                       </div>
-                                    )}
-                                 </div>
-                              )}
-                              
-                              <div className="absolute top-2 left-2 bg-black/60 backdrop-blur px-2 py-0.5 rounded text-xs text-white font-mono border border-white/10 pointer-events-none">
-                                 SHOT {String(index + 1).padStart(2, '0')}
-                              </div>
-                              <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur px-2 py-0.5 rounded text-[10px] text-slate-300 border border-white/10 pointer-events-none">
-                                 {shot.duration}s
-                              </div>
-                           </div>
+                                </div>
 
-                           {/* Right: Controls & Prompt */}
-                           <div className="flex-1 p-5 flex flex-col min-w-0">
-                              <div className="flex justify-between items-start mb-2">
-                                 <div className="flex items-center gap-2">
-                                    <Wand2 size={14} className="text-indigo-400" />
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">分镜提示词 (Prompt)</label>
-                                 </div>
-                                 
-                                 {/* 3 Separate Generate Buttons */}
-                                 <div className="flex items-center gap-1.5">
-                                    <button 
-                                        onClick={() => handleSingleShotGenerate(shot.id, 'IMAGE')}
-                                        disabled={isVideoGenerating || shot.status === 'GENERATING'}
-                                        className="flex items-center gap-1 px-2 py-1.5 bg-slate-800 hover:bg-blue-600 hover:text-white border border-slate-700 text-slate-300 rounded text-xs transition-all disabled:opacity-50"
-                                        title="图生视频"
-                                    >
-                                        <ImageIcon size={12} />
-                                        <span>图生视频</span>
-                                    </button>
-                                    <button 
-                                        onClick={() => handleSingleShotGenerate(shot.id, 'SUBJECT')}
-                                        disabled={isVideoGenerating || shot.status === 'GENERATING'}
-                                        className="flex items-center gap-1 px-2 py-1.5 bg-slate-800 hover:bg-purple-600 hover:text-white border border-slate-700 text-slate-300 rounded text-xs transition-all disabled:opacity-50"
-                                        title="主体生视频"
-                                    >
-                                        <User size={12} />
-                                        <span>主体生视频</span>
-                                    </button>
-                                    <button 
-                                        onClick={() => handleSingleShotGenerate(shot.id, 'SCENE')}
-                                        disabled={isVideoGenerating || shot.status === 'GENERATING'}
-                                        className="flex items-center gap-1 px-2 py-1.5 bg-slate-800 hover:bg-emerald-600 hover:text-white border border-slate-700 text-slate-300 rounded text-xs transition-all disabled:opacity-50"
-                                        title="场景图生视频"
-                                    >
-                                        <Map size={12} />
-                                        <span>场景图生视频</span>
-                                    </button>
-                                 </div>
-                              </div>
-
-                              <textarea 
-                                 value={shot.description}
-                                 onChange={(e) => handleShotPromptChange(shot.id, e.target.value)}
-                                 className="w-full h-28 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none resize-none leading-relaxed font-mono"
-                              />
-
-                              <div className="mt-auto pt-4 border-t border-slate-800/50">
-                                 <div className="flex items-center gap-2 mb-3">
-                                    <ImageIcon size={14} className="text-emerald-400" />
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">关联资产</label>
-                                 </div>
-                                 {linkedAssets.length > 0 ? (
-                                    <div className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar">
-                                       {linkedAssets.map((asset, i) => (
-                                          <div key={i} className="flex items-center gap-2 bg-slate-800 rounded-lg pr-3 pl-1 py-1 border border-slate-700 shrink-0">
-                                             <div className="w-8 h-8 rounded bg-black overflow-hidden shrink-0">
-                                                <img src={asset.url} alt="" className="w-full h-full object-cover" />
-                                             </div>
-                                             <div className="flex flex-col min-w-0">
-                                                <span className="text-xs font-medium text-slate-200 truncate max-w-[100px]">{asset.name.replace('【@', '').replace('】', '').split('-')[0]}</span>
-                                                <span className="text-[10px] text-slate-500 truncate max-w-[100px]">{asset.name.replace('【@', '').replace('】', '').split('-')[1]}</span>
-                                             </div>
-                                          </div>
-                                       ))}
-                                    </div>
-                                 ) : (
-                                    <div className="text-xs text-slate-600 italic pl-1">
-                                       未检测到关联资产。
-                                    </div>
-                                 )}
-                              </div>
-
-                           </div>
-                        </div>
-                     );
-                  })}
-               </div>
-            )}
+                            </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                )}
+            </div>
          </div>
 
         {/* 3. Right-side Mini Map (Navigation) */}
         {activeEpisode && activeEpisode.shots.length > 0 && (
             <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col items-end gap-2 pointer-events-none">
-                <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/50 p-2 rounded-2xl flex flex-col gap-2 shadow-xl pointer-events-auto">
+                <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/50 p-2 rounded-2xl flex flex-col gap-2 shadow-xl pointer-events-auto max-h-[80vh] overflow-y-auto custom-scrollbar">
                     {activeEpisode.shots.map((shot, idx) => {
                         const isGenerating = videoGeneratingMap[shot.id] || shot.status === 'GENERATING';
                         const hasIssue = checkShotIssues(shot.description);
                         const isCompleted = shot.status === 'COMPLETED';
+                        const isError = shot.status === 'ERROR';
+                        
+                        // "New" Bubble Logic: If completed AND NOT in viewedShots
+                        const isNew = isCompleted && !viewedShots.has(shot.id);
                         
                         let bgColor = 'bg-white';
-                        if (hasIssue) bgColor = 'bg-red-500';
+                        if (hasIssue || isError) bgColor = 'bg-red-500';
                         else if (isGenerating) bgColor = 'bg-yellow-500 animate-pulse';
                         else if (isCompleted) bgColor = 'bg-emerald-500';
 
                         return (
-                            <button
-                                key={shot.id}
-                                onClick={(e) => { e.stopPropagation(); scrollToShot(shot.id); }}
-                                className={`w-3 h-3 rounded-sm transition-all hover:scale-150 group relative ${bgColor} shadow-sm`}
-                            >
-                                <div className="absolute right-6 top-1/2 -translate-y-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                    SHOT {idx + 1}
+                            <div key={shot.id} className="relative group">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); scrollToShot(shot.id); }}
+                                    className={`w-3 h-3 rounded-sm transition-all hover:scale-150 relative ${bgColor} shadow-sm block`}
+                                >
+                                </button>
+                                {/* Tooltip placed to the left with pointer-events-none to prevent flickering */}
+                                <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                    分镜 {idx + 1}
                                 </div>
-                            </button>
+                                {isNew && (
+                                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full shadow-sm pointer-events-none animate-pulse border border-slate-900">
+                                    </div>
+                                )}
+                            </div>
                         )
                     })}
                 </div>
@@ -793,6 +995,12 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                  <button onClick={() => setShowSettingsModal(false)} className="text-slate-500 hover:text-white transition-colors">
                      <X size={20} />
                  </button>
+              </div>
+
+              {/* FIRST TIME PROMPT */}
+              <div className="mb-4 bg-purple-500/10 border border-purple-500/20 text-purple-300 px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                  <Settings2 size={16} />
+                  <span>首次进入，请先确认或修改视频生成参数。</span>
               </div>
 
               <div className="space-y-6">
@@ -873,6 +1081,73 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
               </div>
            </div>
         </div>
+      )}
+
+      {/* ERROR LIST MODAL */}
+      {showErrorModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-4">
+              <div className="bg-slate-900 w-full max-w-2xl rounded-xl border border-slate-700 shadow-2xl flex flex-col animate-scale-in max-h-[80vh]">
+                  <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-800 rounded-t-xl">
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                          <AlertCircle className="text-red-500" size={20} />
+                          生成错误日志
+                      </h3>
+                      <button onClick={() => setShowErrorModal(false)} className="text-slate-400 hover:text-white transition-colors">
+                          <X size={20} />
+                      </button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto p-4 bg-slate-950">
+                      {errors.length === 0 ? (
+                          <div className="text-center text-slate-500 py-10">暂无错误记录</div>
+                      ) : (
+                          <div className="space-y-3">
+                              {errors.map((err) => (
+                                  <div key={err.id} className="bg-slate-900 border border-red-900/30 rounded-lg overflow-hidden">
+                                      <div 
+                                          className="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-800 transition-colors"
+                                          onClick={() => setExpandedErrorId(expandedErrorId === err.id ? null : err.id)}
+                                      >
+                                          <div className="flex items-center gap-3">
+                                              <span className="text-red-400 font-mono text-xs bg-red-900/20 px-2 py-1 rounded">Shot {err.shotIndex}</span>
+                                              <div className="flex flex-col">
+                                                  <span className="text-slate-400 text-xs">{err.episodeName}</span>
+                                                  <span className="text-slate-300 text-sm">{err.message}</span>
+                                              </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-slate-500 text-xs">
+                                              <span>{err.timestamp.toLocaleTimeString()}</span>
+                                              {expandedErrorId === err.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                          </div>
+                                      </div>
+                                      
+                                      {expandedErrorId === err.id && (
+                                          <div className="p-3 bg-black/30 border-t border-slate-800 text-xs font-mono text-slate-400 whitespace-pre-wrap leading-relaxed">
+                                              {err.detail}
+                                          </div>
+                                      )}
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+                  
+                  <div className="p-4 border-t border-slate-700 bg-slate-800 flex justify-end rounded-b-xl">
+                      <button 
+                          onClick={() => setErrors([])}
+                          className="px-4 py-2 text-slate-400 hover:text-white text-sm mr-auto"
+                      >
+                          清空日志
+                      </button>
+                      <button 
+                          onClick={() => setShowErrorModal(false)}
+                          className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm"
+                      >
+                          关闭
+                      </button>
+                  </div>
+              </div>
+          </div>
       )}
 
       {/* Redirect/Warning Modal */}

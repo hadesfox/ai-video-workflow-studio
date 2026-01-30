@@ -1,15 +1,18 @@
 import React, { useState, useRef } from 'react';
 import { Project } from '../types';
-import { Plus, FolderOpen, Clock, FileText, ArrowRight, Edit2, Trash2, X, Sparkles, BookOpen, Mic, CheckCircle2, ArrowRightLeft, PlayCircle, Film, UploadCloud, File as FileIcon, Eye, Check, AlignLeft } from 'lucide-react';
+import { Plus, FolderOpen, Clock, FileText, ArrowRight, Edit2, Trash2, X, Sparkles, BookOpen, Mic, CheckCircle2, ArrowRightLeft, PlayCircle, Film, UploadCloud, File as FileIcon, Eye, Check, AlignLeft, AlertCircle, Settings } from 'lucide-react';
 
 interface ProjectSelectionProps {
   currentProject: Project | null;
   setProject: (p: Project) => void;
   onProjectSelected: () => void;
+  onOpenSettings: () => void;
 }
 
-const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, setProject, onProjectSelected }) => {
+const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, setProject, onProjectSelected, onOpenSettings }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSettingsCheck, setShowSettingsCheck] = useState(false); // New Check Modal
+  
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [newScriptContent, setNewScriptContent] = useState('');
   
@@ -34,6 +37,20 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   // --- Handlers ---
+
+  const handleNewProjectClick = () => {
+      setShowSettingsCheck(true);
+  };
+
+  const proceedToCreate = () => {
+      setShowSettingsCheck(false);
+      setShowCreateModal(true);
+  };
+
+  const handleCheckSettings = () => {
+      setShowSettingsCheck(false);
+      onOpenSettings();
+  };
 
   const handleCreateComplete = (finalContent: string) => {
     const newProject: Project = {
@@ -197,7 +214,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
         
         {/* New Project Card */}
         <div 
-          onClick={() => setShowCreateModal(true)}
+          onClick={handleNewProjectClick}
           className="group cursor-pointer min-h-[220px] rounded-xl border-2 border-dashed border-slate-700 hover:border-blue-500 bg-slate-900/30 hover:bg-slate-900/80 transition-all duration-300 flex flex-col items-center justify-center relative overflow-hidden"
         >
           <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -256,6 +273,38 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
           </div>
         ))}
       </div>
+
+      {/* GLOBAL SETTINGS CHECK MODAL */}
+      {showSettingsCheck && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-4">
+              <div className="bg-slate-900 w-full max-w-sm rounded-xl border border-slate-700 shadow-2xl p-6 animate-scale-in text-center">
+                  <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Settings className="text-blue-500" size={32} />
+                  </div>
+                  
+                  <h3 className="text-xl font-bold text-white mb-2">全局设置检查</h3>
+                  <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                      在创建新项目之前，请确认您已完成全局 Agent 配置（如模型选择、提示词等）。
+                  </p>
+                  
+                  <div className="flex flex-col gap-3">
+                      <button 
+                          onClick={handleCheckSettings}
+                          className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium shadow-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                          <span>去检查设置</span>
+                          <ArrowRight size={16} />
+                      </button>
+                      <button 
+                          onClick={proceedToCreate}
+                          className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 rounded-lg text-sm transition-colors"
+                      >
+                          已完成，继续创建
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* CREATE PROJECT MODAL */}
       {showCreateModal && (

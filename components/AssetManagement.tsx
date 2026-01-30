@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Asset, AssetState, AssetSubTab, WorldviewEntry } from '../types';
-import { Layers, Wand2, RefreshCw, Mic, Volume2, Sparkles, FileSearch, ImagePlus, User, Map, Box, X, ChevronRight, Check, Search, Settings2, Trash2, CheckSquare, Square, LayoutTemplate, List, AlertCircle, Play, Upload, Plus, Loader2, Globe2 } from 'lucide-react';
+import { Layers, Wand2, RefreshCw, Mic, Volume2, Sparkles, FileSearch, ImagePlus, User, Map, Box, X, ChevronRight, Check, Search, Settings2, Trash2, CheckSquare, Square, LayoutTemplate, List, AlertCircle, Play, Upload, Plus, Loader2, Globe2, FileText, File } from 'lucide-react';
 
 interface AssetManagementProps {
   assets: Asset[];
@@ -42,6 +42,9 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   // Worldview Modal State
   const [showWorldviewModal, setShowWorldviewModal] = useState(false);
 
+  // Script Preview Modal
+  const [previewScript, setPreviewScript] = useState<{name: string, content: string} | null>(null);
+
   // Generation State
   const [processingLabel, setProcessingLabel] = useState<string | null>(null); // Global processing label (extract/detail/gen)
   const [isRegenerating, setIsRegenerating] = useState(false); // Single image regeneration
@@ -49,6 +52,17 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   
   // File Upload Ref
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Button Status Logic
+  const hasExtracted = assets.length > 0;
+  const hasGeneratedDetails = assets.some(a => a.states.some(s => !!s.prompt));
+
+  // --- Mock Data for Episodes ---
+  const mockEpisodes = [
+      { id: 'ep1', name: '第一集：觉醒.txt', content: '第一集：觉醒\n\n场景1：雨夜街道\n角色：Kael\n\nKael 站在霓虹灯下，雨水顺着帽檐滴落。他看着手中的全息照片，眼神迷茫...' },
+      { id: 'ep2', name: '第二集：追逐.txt', content: '第二集：追逐\n\n场景1：高速公路\n角色：Kael, 追击者\n\n浮空车在车流中穿梭，警报声此起彼伏...' },
+      { id: 'ep3', name: '第三集：对决.txt', content: '第三集：对决\n\n场景1：废弃工厂\n角色：Kael, Vesper\n\n这里是决战之地。生锈的机械臂如同巨兽的骨架...' },
+  ];
 
   // --- Mock Functions ---
   
@@ -275,12 +289,23 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
 
   // 修改：一键生图 (只针对有 prompt 的状态)
   const handleOneClickGen = () => {
+    // 检查是否有任何状态有prompt但没有图片
+    const hasPendingGeneration = assets.some(a => a.states.some(s => s.prompt && !s.mainImageUrl));
+    
+    // 如果没有待生成的（或者第一次生成），我们可能生成所有。
+    // 但需求是：再次点击则检查有提示词没图片的资产才生效
+    // 如果已经有一些图了，只生成剩余的
+    const isUpdateMode = assets.some(a => a.states.some(s => !!s.mainImageUrl));
+
     setProcessingLabel('正在批量生成资产图像...');
     setTimeout(() => {
       setAssets(prev => prev.map(a => {
         const newStates = a.states.map(s => {
           // 如果没有 prompt，则跳过生成
           if (!s.prompt) return s;
+
+          // 智能更新：如果有图，且是更新模式（不是第一次），则跳过
+          if (s.mainImageUrl && isUpdateMode) return s;
 
           return {
             ...s,
@@ -555,6 +580,59 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   const isViewingInitialState = activeModalState && initialAssetState && activeModalState.id === initialAssetState.id;
 
   // --- SubTab Handling ---
+  if (subTab === AssetSubTab.EPISODES) {
+      return (
+          <div className="h-full flex flex-col p-8 animate-fade-in relative">
+              <div className="flex justify-between items-center pb-4 border-b border-slate-800 mb-6">
+                  <h3 className="text-xl font-semibold text-white">剧集管理</h3>
+                  <div className="text-sm text-slate-500">共 {mockEpisodes.length} 集</div>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                  {mockEpisodes.map(ep => (
+                      <div 
+                          key={ep.id}
+                          onClick={() => setPreviewScript({ name: ep.name, content: ep.content })}
+                          className="group flex flex-col items-center gap-3 p-6 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-800 hover:border-blue-500 cursor-pointer transition-all hover:-translate-y-1"
+                      >
+                          <div className="w-16 h-16 bg-blue-500/10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <FileText className="text-blue-500" size={32} />
+                          </div>
+                          <span className="text-sm font-medium text-slate-300 text-center line-clamp-2 group-hover:text-white">{ep.name}</span>
+                      </div>
+                  ))}
+              </div>
+
+              {/* Script Preview Modal */}
+              {previewScript && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-6">
+                      <div className="bg-slate-900 w-full max-w-2xl rounded-xl border border-slate-700 shadow-2xl flex flex-col animate-scale-in max-h-[80vh]">
+                          <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900 rounded-t-xl">
+                              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                  <File size={20} className="text-blue-500"/>
+                                  {previewScript.name}
+                              </h3>
+                              <button onClick={() => setPreviewScript(null)} className="text-slate-400 hover:text-white transition-colors">
+                                  <X size={20} />
+                              </button>
+                          </div>
+                          <div className="flex-1 overflow-y-auto p-6 bg-slate-950">
+                              <pre className="whitespace-pre-wrap font-mono text-slate-300 text-sm leading-relaxed">
+                                  {previewScript.content}
+                              </pre>
+                          </div>
+                          <div className="p-4 border-t border-slate-800 bg-slate-900 rounded-b-xl flex justify-end">
+                              <button onClick={() => setPreviewScript(null)} className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium">
+                                  关闭
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+              )}
+          </div>
+      );
+  }
+
   if (subTab === AssetSubTab.TTS) {
      return (
         <div className="h-full flex flex-col space-y-6 animate-fade-in p-8">
@@ -608,25 +686,27 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
 
            <button 
              onClick={handleExtractAssets}
-             disabled={!!processingLabel}
+             disabled={!!processingLabel || hasExtracted}
              className="flex items-center space-x-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+             title={hasExtracted ? "资产已提取" : "从剧本中提取资产"}
            >
              <FileSearch size={14} />
              <span>提取资产</span>
            </button>
            <button 
              onClick={handleGenerateDetails}
-             disabled={!!processingLabel || assets.length === 0}
+             disabled={!!processingLabel || assets.length === 0 || hasGeneratedDetails}
              className="flex items-center space-x-2 px-3 py-1.5 bg-indigo-900/50 hover:bg-indigo-900 text-indigo-200 rounded-lg border border-indigo-800 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+             title={hasGeneratedDetails ? "详情已生成" : "生成Prompt和属性"}
            >
              <Sparkles size={14} />
              <span>生成详情</span>
            </button>
            <button 
              onClick={handleOneClickGen}
-             disabled={!!processingLabel || assets.length === 0}
+             disabled={!!processingLabel || !hasGeneratedDetails}
              className="flex items-center space-x-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-lg shadow-blue-900/30 transition-transform active:scale-95 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-             title="仅对已生成详情（包含Prompt）的资产状态生效"
+             title={!hasGeneratedDetails ? "请先生成详情" : "批量生成所有图片"}
            >
              <ImagePlus size={14} />
              <span>一键生图</span>

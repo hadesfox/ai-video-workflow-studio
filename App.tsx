@@ -143,6 +143,7 @@ const App: React.FC = () => {
 
   // --- Theme State ---
   const [theme, setTheme] = useState<ThemeOption>('dark');
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false); // New state for click interaction
 
   // --- Global State ---
   const [currentTab, setCurrentTab] = useState<MainTab>(MainTab.PROJECTS);
@@ -150,17 +151,70 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   
+  // New: Global state to track if user has visited video page (for one-time modal)
+  const [hasVisitedVideo, setHasVisitedVideo] = useState(false);
+
   // Data State
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [worldview, setWorldview] = useState<WorldviewEntry[]>([]); // New Worldview State
   const [globalSettings, setGlobalSettings] = useState<Record<ConfigKeys, AgentSettings>>(createDefaultSettings()); // New Settings State
   
-  // Lifted Episodes State (Persistence for StageVideo)
+  // Lifted Episodes State (Persistence for StageVideo) with Script Content
   const [episodes, setEpisodes] = useState<Episode[]>([
-    { id: 'ep1', name: '第一集：觉醒', shots: [] },
-    { id: 'ep2', name: '第二集：追逐', shots: [] },
-    { id: 'ep3', name: '第三集：对决', shots: [] },
+    { 
+        id: 'ep1', 
+        name: '第一集：觉醒', 
+        scriptContent: `[场景：雨夜街道]
+时间：深夜
+角色：Kael（主角）
+
+画面描述：
+街道上霓虹灯闪烁，雨水不断冲刷着路面，反射出五颜六色的光芒。全息广告牌在空中悬浮，播放着断断续续的义体广告。
+
+Kael 独自站在路灯下，雨水顺着他宽大的帽檐滴落。他手里紧紧攥着一张发黄的全息照片，眼神中透露出迷茫和疲惫。
+
+Kael (独白): "我不知道我是谁，但我知道我要找什么。这种感觉就像大脑里植入了一段死循环的代码，无法停止，也无法破解。"
+
+镜头缓慢推进，给到 Kael 的特写。他的左眼是一只明显的义眼，此时正收缩着红色的光圈，似乎在扫描着周围的信息。`,
+        shots: [] 
+    },
+    { 
+        id: 'ep2', 
+        name: '第二集：追逐', 
+        scriptContent: `[场景：高速公路隧道]
+时间：夜间
+角色：Kael, 追击者
+
+画面描述：
+Kael 驾驶着一辆改装过的浮空车，在拥挤的车流中极速穿梭。发动机发出刺耳的轰鸣声，车身剧烈震动。
+
+身后，两架黑色的无人机紧追不舍。红色的激光瞄准线在 Kael 的车身上扫过，随后是几束高能激光擦着车身飞过，溅起一片耀眼的火花。
+
+Kael 咬紧牙关，猛打方向盘，浮空车侧身滑行，险之又险地钻入了一条狭窄的废弃隧道。
+
+追击者 (通讯频道): "目标已进入 D-4 区域，所有单位准备拦截。重复，这不是演习。"`,
+        shots: [] 
+    },
+    { 
+        id: 'ep3', 
+        name: '第三集：对决', 
+        scriptContent: `[场景：废弃工厂核心区]
+时间：黎明前
+角色：Kael, Vesper（反派）
+
+画面描述：
+这里是城市的边缘，巨大的废弃工厂如同钢铁巨兽的骨架。生锈的机械臂悬挂在半空，偶尔发出吱呀的声响。
+
+Vesper 穿着一身剪裁完美的白色西装，一尘不染，与周围肮脏、油腻的环境形成了鲜明对比。他站在高处的平台上，俯视着下方的 Kael。
+
+Vesper (冷笑): "你以为你能改变什么吗？Kael。你不过是泰瑞尔公司的一件废弃产品，一段产生了错误的程序。"
+
+Kael 拔出腰间的旧式左轮，枪口由于充能而微微发光。他的眼神不再迷茫，而是充满了坚定。
+
+Kael: "也许我是个错误。但有时候，正是错误导致了系统的进化。今天，我就要终结你的代码。"`,
+        shots: [] 
+    },
   ]);
 
   // Lifted Video Settings (Persistence)
@@ -174,6 +228,7 @@ const App: React.FC = () => {
   const [editorClips, setEditorClips] = useState<TimelineClip[]>([]);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const themeMenuRef = useRef<HTMLDivElement>(null); // Ref for theme menu
 
   useEffect(() => {
     // Apply theme to document root
@@ -184,6 +239,9 @@ const App: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
+      }
+      if (themeMenuRef.current && !themeMenuRef.current.contains(event.target as Node)) {
+        setIsThemeMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -228,6 +286,7 @@ const App: React.FC = () => {
             currentProject={project} 
             setProject={setProject} 
             onProjectSelected={handleProjectSelect}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
         );
       case MainTab.ASSETS:
@@ -260,6 +319,8 @@ const App: React.FC = () => {
             setEditorClips={setEditorClips}
             goToAssets={() => setCurrentTab(MainTab.ASSETS)}
             onNext={() => setCurrentTab(MainTab.EDITOR)}
+            hasVisitedVideo={hasVisitedVideo}
+            setHasVisitedVideo={setHasVisitedVideo}
           />
         );
       case MainTab.EDITOR:
@@ -318,6 +379,13 @@ const App: React.FC = () => {
                  {isActive && tab.id === MainTab.ASSETS && (
                    <div className="flex space-x-3 mt-1 mb-1 text-[10px] font-bold tracking-wide animate-fade-in">
                       <span 
+                        onClick={(e) => { e.stopPropagation(); setAssetSubTab(AssetSubTab.EPISODES); }}
+                        className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${assetSubTab === AssetSubTab.EPISODES ? 'text-blue-400' : 'text-slate-500'}`}
+                      >
+                        剧集管理
+                      </span>
+                      <span className="text-slate-700">|</span>
+                      <span 
                         onClick={(e) => { e.stopPropagation(); setAssetSubTab(AssetSubTab.IMAGES); }}
                         className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${assetSubTab === AssetSubTab.IMAGES ? 'text-blue-400' : 'text-slate-500'}`}
                       >
@@ -353,29 +421,32 @@ const App: React.FC = () => {
              <Settings size={22} />
            </button>
 
-           {/* Theme Switcher */}
-           <div className="relative group">
+           {/* Theme Switcher (Changed to Click) */}
+           <div className="relative" ref={themeMenuRef}>
               <button 
-                className="p-2.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-full transition-colors"
+                onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
+                className={`p-2.5 rounded-full transition-colors ${isThemeMenuOpen ? 'text-blue-400 bg-slate-800' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
                 title="切换样式风格"
               >
                 <Palette size={22} />
               </button>
-              {/* Dropdown on Hover */}
-              <div className="absolute right-0 top-full mt-2 w-40 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1 hidden group-hover:block animate-fade-in origin-top-right z-50">
-                 <button onClick={() => setTheme('light')} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'light' ? 'text-blue-400' : 'text-slate-300'}`}>
-                    <Sun size={14} /> 日光模式
-                 </button>
-                 <button onClick={() => setTheme('dark')} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'dark' ? 'text-blue-400' : 'text-slate-300'}`}>
-                    <Moon size={14} /> 黑夜模式
-                 </button>
-                 <button onClick={() => setTheme('camo')} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'camo' ? 'text-emerald-400' : 'text-slate-300'}`}>
-                    <Sprout size={14} /> 迷彩风格
-                 </button>
-                 <button onClick={() => setTheme('purple')} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'purple' ? 'text-purple-400' : 'text-slate-300'}`}>
-                    <Zap size={14} /> 电光紫
-                 </button>
-              </div>
+              {/* Dropdown - Click to Show */}
+              {isThemeMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-40 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1 animate-fade-in origin-top-right z-50">
+                   <button onClick={() => { setTheme('light'); setIsThemeMenuOpen(false); }} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'light' ? 'text-blue-400' : 'text-slate-300'}`}>
+                      <Sun size={14} /> 日光模式
+                   </button>
+                   <button onClick={() => { setTheme('dark'); setIsThemeMenuOpen(false); }} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'dark' ? 'text-blue-400' : 'text-slate-300'}`}>
+                      <Moon size={14} /> 黑夜模式
+                   </button>
+                   <button onClick={() => { setTheme('camo'); setIsThemeMenuOpen(false); }} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'camo' ? 'text-emerald-400' : 'text-slate-300'}`}>
+                      <Sprout size={14} /> 迷彩风格
+                   </button>
+                   <button onClick={() => { setTheme('purple'); setIsThemeMenuOpen(false); }} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'purple' ? 'text-purple-400' : 'text-slate-300'}`}>
+                      <Zap size={14} /> 电光紫
+                   </button>
+                </div>
+              )}
            </div>
 
            {/* User Dropdown */}
