@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Asset, AssetState, AssetSubTab, WorldviewEntry } from '../types';
 import { Layers, Wand2, RefreshCw, Mic, Volume2, Sparkles, FileSearch, ImagePlus, User, Map, Box, X, ChevronRight, Check, Search, Settings2, Trash2, CheckSquare, Square, LayoutTemplate, List, AlertCircle, Play, Upload, Plus, Loader2, Globe2, FileText, File } from 'lucide-react';
 
@@ -52,6 +52,9 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   
   // File Upload Ref
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Textarea Ref for Auto-size
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Button Status Logic
   const hasExtracted = assets.length > 0;
@@ -579,6 +582,14 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   const initialAssetState = activeAsset ? activeAsset.states[0] : null;
   const isViewingInitialState = activeModalState && initialAssetState && activeModalState.id === initialAssetState.id;
 
+  // Auto-resize prompt textarea
+  useEffect(() => {
+    if (activeModalState && promptTextareaRef.current) {
+        promptTextareaRef.current.style.height = 'auto';
+        promptTextareaRef.current.style.height = promptTextareaRef.current.scrollHeight + 'px';
+    }
+  }, [activeModalState?.prompt, selectedStateId]);
+
   // --- SubTab Handling ---
   if (subTab === AssetSubTab.EPISODES) {
       return (
@@ -1064,11 +1075,6 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                                   <Sparkles size={16} />
                                   <span>生图提示词 (Prompt)</span>
                               </label>
-                              <div className="flex space-x-2">
-                                <button className="text-xs text-slate-500 hover:text-blue-300 flex items-center space-x-1 px-2 py-1 rounded hover:bg-slate-800 transition-colors">
-                                    <RefreshCw size={12}/> <span>优化词条</span>
-                                </button>
-                              </div>
                            </div>
                            
                            {/* Show reference image from Initial State if we are NOT viewing the initial state */}
@@ -1091,10 +1097,12 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
 
                            <div className="relative">
                               <textarea 
+                                ref={promptTextareaRef}
                                 value={activeModalState.prompt || ''}
                                 onChange={(e) => handlePromptChange(e.target.value)}
-                                className="w-full h-40 bg-black/30 text-sm text-slate-300 font-mono leading-relaxed p-3 rounded border border-slate-800/50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 focus:outline-none resize-none custom-scrollbar transition-all placeholder:text-slate-600"
+                                className="w-full bg-black/30 text-sm text-slate-300 font-mono leading-relaxed p-3 rounded border border-slate-800/50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 focus:outline-none resize-none custom-scrollbar transition-all placeholder:text-slate-600 overflow-hidden"
                                 placeholder="输入详细的画面描述..."
+                                style={{ minHeight: '10rem' }}
                               />
                            </div>
 
@@ -1117,25 +1125,6 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                            <p className="text-base text-slate-200 bg-slate-800/50 p-4 rounded-xl border border-slate-800 leading-relaxed min-h-[4rem]">
                              {activeModalState.description || <span className="text-slate-600 italic">暂无描述...</span>}
                            </p>
-                        </div>
-
-                        {/* Attributes */}
-                        <div>
-                           <label className="block text-sm font-bold text-slate-400 mb-3 pl-1">详细特征 (Attributes)</label>
-                           {activeModalState.attributes ? (
-                             <div className="grid grid-cols-2 gap-3">
-                                {Object.entries(activeModalState.attributes).map(([key, value]) => (
-                                  <div key={key} className="bg-slate-800/80 p-3 rounded-lg border border-slate-700/50 flex flex-col group hover:border-slate-600 transition-colors">
-                                     <span className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 group-hover:text-slate-400">{key}</span>
-                                     <span className="text-sm text-white font-medium">{value}</span>
-                                  </div>
-                                ))}
-                             </div>
-                           ) : (
-                             <div className="text-sm text-slate-500 italic p-4 border border-dashed border-slate-800 rounded-lg text-center">
-                               暂无详细特征数据，可点击上方"生成详情"或手动完善
-                             </div>
-                           )}
                         </div>
 
                      </div>
