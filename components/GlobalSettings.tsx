@@ -34,49 +34,83 @@ const MODEL_OPTIONS = [
   'Gemini 2.5 Flash'
 ];
 
-// 针对每个环节的提示词选项
+// 针对每个环节的提示词选项 (扩充风格化选项)
 const PROMPT_OPTIONS: Record<ConfigKeys, string[]> = {
-  script: ['剧本分析-通用', '剧本分析-结构化', '剧本分析-创意发散', '剧本分析-深度解构', '剧本分析-极简风格'],
-  indexProps: ['索引提取-通用-道具', '索引提取-细粒度-道具', '索引提取-关键物品', '索引提取-科幻类', '索引提取-魔幻类'],
-  indexScenes: ['索引提取-通用-场景', '索引提取-氛围优先-场景', '索引提取-构建优先', '索引提取-宏大叙事', '索引提取-微观视角'],
-  indexChars: ['索引提取-通用-人物', '索引提取-性格侧写', '索引提取-外貌优先', '索引提取-心理分析', '索引提取-关系网络'],
-  worldview: ['世界观提取-通用', '世界观提取-历史背景', '世界观提取-物理法则', '世界观提取-魔法体系', '世界观提取-科技树'],
-  detailProps: ['资产详情-通用-道具', '资产详情-高精度描述', '资产详情-游戏资产风', '资产详情-陈旧感', '资产详情-未来感'],
-  detailScenes: ['资产详情-通用-场景', '资产详情-电影级布光', '资产详情-概念设计', '资产详情-写实渲染', '资产详情-水墨风格'],
-  detailChars: ['资产详情-通用-人物', '资产详情-DND卡片风格', '资产详情-写实风格', '资产详情-二次元风格', '资产详情-皮克斯风格'],
-  special1: ['特殊形态-通用', '特殊形态-抽象化', '特殊形态-符号化'],
-  special2: ['特殊形态-通用', '特殊形态-抽象化', '特殊形态-符号化'],
-  special3: ['特殊形态-通用', '特殊形态-抽象化', '特殊形态-符号化'],
-  imgPrompt: ['生图提示词-Midjourney风', '生图提示词-StableDiffusion风', '生图提示词-自然语言', '生图提示词-摄影指令', '生图提示词-艺术画风'],
-  storyboard: ['分镜-通用', '分镜-好莱坞电影感', '分镜-日式动画风', '分镜-动态分镜', '分镜-广告分镜']
+  script: [
+    '剧本分析-通用', '剧本分析-2D动画适配', '剧本分析-影视化写实', '剧本分析-3D视觉化', '剧本分析-结构化'
+  ],
+  indexProps: [
+    '索引提取-通用-道具', '索引提取-2D风格化物品', '索引提取-写实道具', '索引提取-3D资产规格', '索引提取-细粒度'
+  ],
+  indexScenes: [
+    '索引提取-通用-场景', '索引提取-2D背景绘制', '索引提取-实拍取景地', '索引提取-3D场景搭建', '索引提取-氛围优先'
+  ],
+  indexChars: [
+    '索引提取-通用-人物', '索引提取-二次元人设', '索引提取-真人选角', '索引提取-3D角色建模', '索引提取-性格侧写'
+  ],
+  worldview: [
+    '世界观提取-通用', '世界观提取-动画美术风格', '世界观提取-电影摄影风格', '世界观提取-3D渲染风格', '世界观提取-物理法则'
+  ],
+  detailProps: [
+    '资产详情-通用-道具', '资产详情-赛璐珞风格描述', '资产详情-电影级道具质感', '资产详情-PBR材质描述', '资产详情-高精度'
+  ],
+  detailScenes: [
+    '资产详情-通用-场景', '资产详情-新海诚/吉卜力风', '资产详情-好莱坞电影布光', '资产详情-UE5场景描述', '资产详情-概念设计'
+  ],
+  detailChars: [
+    '资产详情-通用-人物', '资产详情-日漫风格', '资产详情-真实摄影人像', '资产详情-皮克斯/迪士尼3D', '资产详情-DND卡片风格'
+  ],
+  special1: ['特殊形态-通用', '特殊形态-夸张变形(2D)', '特殊形态-特效化妆(真人)', '特殊形态-粒子特效(3D)'],
+  special2: ['特殊形态-通用', '特殊形态-线条动态(2D)', '特殊形态-物理破坏(真人)', '特殊形态-流体模拟(3D)'],
+  special3: ['特殊形态-通用', '特殊形态-光影涂抹(2D)', '特殊形态-实拍光效(真人)', '特殊形态-体积光(3D)'],
+  imgPrompt: [
+    '生图提示词-通用', '生图提示词-Niji动漫风', '生图提示词-电影级写实(Photo)', '生图提示词-Octane 3D渲染', '生图提示词-Midjourney默认'
+  ],
+  storyboard: [
+    '分镜-通用', '分镜-日式动画分镜', '分镜-电影实拍分镜', '分镜-3D动态预览', '分镜-广告分镜'
+  ]
 };
 
-// 辅助函数：生成默认配置 (用于模板切换)
-const createConfig = (model: string, promptIndex: number = 0): Record<ConfigKeys, AgentSettings> => {
+// 辅助函数：快速生成指定风格的配置
+const createStyleConfig = (styleType: '2D' | 'REAL' | '3D'): Record<ConfigKeys, AgentSettings> => {
   const config: any = {};
+  const defaultModel = 'Gemini 3 Flash (标准)';
+  
+  // 简单的关键词映射帮助选择正确的提示词索引
+  const getPrompt = (key: ConfigKeys) => {
+    const options = PROMPT_OPTIONS[key];
+    const match = options.find(opt => {
+      if (styleType === '2D') return opt.includes('2D') || opt.includes('动漫') || opt.includes('二次元') || opt.includes('动画') || opt.includes('日漫') || opt.includes('赛璐珞') || opt.includes('新海诚');
+      if (styleType === 'REAL') return opt.includes('真人') || opt.includes('写实') || opt.includes('实拍') || opt.includes('影视') || opt.includes('电影');
+      if (styleType === '3D') return opt.includes('3D') || opt.includes('渲染') || opt.includes('UE5') || opt.includes('建模') || opt.includes('皮克斯');
+      return false;
+    });
+    return match || options[0]; // Fallback to first option
+  };
+
   (Object.keys(FIELD_LABELS) as ConfigKeys[]).forEach(key => {
     config[key] = {
-      model: model,
-      prompt: PROMPT_OPTIONS[key][promptIndex] || PROMPT_OPTIONS[key][0],
+      model: defaultModel,
+      prompt: getPrompt(key),
       enabled: true
     };
   });
   return config;
 };
 
-// 模板定义
+// 模板定义 (风格化)
 const TEMPLATES: Record<string, { label: string; config: Record<ConfigKeys, AgentSettings> }> = {
-  standard: {
-    label: '标准模式 (平衡)',
-    config: createConfig('Gemini 3 Flash (标准)', 0)
+  '2d': {
+    label: '2D 动画模式 (Anime/Cartoon)',
+    config: createStyleConfig('2D')
   },
-  quality: {
-    label: '高质量模式 (Pro优先)',
-    config: createConfig('Gemini 3 Pro (高智)', 1) // 假设索引1是更高质量的提示词
+  'realism': {
+    label: '真人实拍模式 (Cinematic/Realism)',
+    config: createStyleConfig('REAL')
   },
-  speed: {
-    label: '极速模式 (Lite优先)',
-    config: createConfig('Gemini Flash-Lite (极速)', 0)
+  '3d': {
+    label: '3D 渲染模式 (3D Render/CGI)',
+    config: createStyleConfig('3D')
   }
 };
 

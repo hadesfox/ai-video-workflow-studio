@@ -6,7 +6,8 @@ import StageMasterLib from './components/StageMasterLib'; // Reuse existing comp
 import StageVideo from './components/StageVideo'; // Reuse existing component
 import OnlineEditor from './components/OnlineEditor';
 import GlobalSettings from './components/GlobalSettings';
-import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap } from 'lucide-react';
+import BackendManagement from './components/BackendManagement'; // Import Backend Management
+import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap, LayoutDashboard } from 'lucide-react';
 
 // Default Settings Helper
 const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
@@ -151,6 +152,9 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   
+  // New: Backend Management State
+  const [isBackendOpen, setIsBackendOpen] = useState(false);
+  
   // New: Global state to track if user has visited video page (for one-time modal)
   const [hasVisitedVideo, setHasVisitedVideo] = useState(false);
 
@@ -269,6 +273,7 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
   const handleLogout = () => {
     setIsLoggedIn(false);
     setShowUserMenu(false);
+    setIsBackendOpen(false); // Reset backend mode
     setProject(null); // Optional: clear project on logout
   };
 
@@ -333,6 +338,11 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
   // If not logged in, show Login Screen
   if (!isLoggedIn) {
     return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
+  }
+
+  // If Backend Mode is active, show Backend Management
+  if (isBackendOpen) {
+    return <BackendManagement onExit={() => setIsBackendOpen(false)} />;
   }
 
   return (
@@ -467,6 +477,12 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
                       <p className="text-xs text-slate-500 truncate">admin@vidustudio.com</p>
                    </div>
                    <div className="p-1">
+                      <button 
+                        onClick={() => { setIsBackendOpen(true); setShowUserMenu(false); }}
+                        className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg flex items-center gap-2 transition-colors"
+                      >
+                         <LayoutDashboard size={16} /> 后台管理
+                      </button>
                       <button 
                         onClick={handleChangePassword}
                         className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg flex items-center gap-2 transition-colors"

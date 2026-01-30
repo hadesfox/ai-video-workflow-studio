@@ -359,10 +359,10 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
                     </div>
                  </div>
 
-                 {/* 2. Script Type Selection */}
+                 {/* 2. Script Type Selection - UPDATED LABEL */}
                  <div className="space-y-3">
                     <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                       <BookOpen size={16} className="text-purple-500"/> 选择剧本类型
+                       <BookOpen size={16} className="text-purple-500"/> 选择制作类型
                     </label>
                     <div className="grid grid-cols-2 gap-4">
                        <button 
@@ -382,13 +382,13 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
                     </div>
                  </div>
 
-                 {/* 3. Conditional Logic for Commentary */}
+                 {/* 3. Conditional Logic for Commentary - UPDATED LABEL */}
                  {scriptType === 'COMMENTARY' && (
                     <div className="bg-slate-800/50 p-5 rounded-xl border border-slate-700/50 space-y-5 animate-fade-in">
                        
                        {/* Upload Toggle */}
                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-slate-300">是否上传的解说剧本?</span>
+                          <span className="text-sm text-slate-300">上传的是否是解说剧本?</span>
                           <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
                              <button 
                                 onClick={() => setIsUploadedScript(true)}
