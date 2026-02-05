@@ -29,8 +29,8 @@ const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
 
 // --- Login Component ---
 const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
-  const [account, setAccount] = useState('');
-  const [password, setPassword] = useState('');
+  const [account, setAccount] = useState('admin');
+  const [password, setPassword] = useState('123456');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
