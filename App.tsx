@@ -13,8 +13,8 @@ import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle,
 const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
     const keys: ConfigKeys[] = [
         'script', 'indexProps', 'indexScenes', 'indexChars', 'worldview',
-        'detailProps', 'detailScenes', 'detailChars', 'special1', 'special2', 'special3',
-        'imgPrompt', 'storyboard'
+        'detailProps', 'detailScenes', 'detailChars', 'special3', 'special2', 'special1',
+        'imgPromptProps', 'imgPromptScenes', 'imgPromptChars', 'storyboard'
     ];
     const settings: any = {};
     keys.forEach(key => {

@@ -9,7 +9,7 @@ interface GlobalSettingsProps {
   onSave: (settings: Record<ConfigKeys, AgentSettings>) => void;
 }
 
-// 配置项标签映射
+// 配置项标签映射 - Adjusted order and split keys
 const FIELD_LABELS: Record<ConfigKeys, string> = {
   script: '剧本',
   indexProps: '索引提取-道具',
@@ -19,10 +19,12 @@ const FIELD_LABELS: Record<ConfigKeys, string> = {
   detailProps: '资产详情-道具',
   detailScenes: '资产详情-场景',
   detailChars: '资产详情-人物',
-  special1: '特殊形态提示词-1',
-  special2: '特殊形态提示词-2',
-  special3: '特殊形态提示词-3',
-  imgPrompt: '生图提示词',
+  special3: '特殊状态提示词-道具',
+  special2: '特殊状态提示词-场景',
+  special1: '特殊状态提示词-人物',
+  imgPromptProps: '主状态提示词-道具',
+  imgPromptScenes: '主状态提示词-场景',
+  imgPromptChars: '主状态提示词-人物',
   storyboard: '分镜提示词'
 };
 
@@ -60,12 +62,21 @@ const PROMPT_OPTIONS: Record<ConfigKeys, string[]> = {
   detailChars: [
     '资产详情-通用-人物', '资产详情-日漫风格', '资产详情-真实摄影人像', '资产详情-皮克斯/迪士尼3D', '资产详情-DND卡片风格'
   ],
-  special1: ['特殊形态-通用', '特殊形态-夸张变形(2D)', '特殊形态-特效化妆(真人)', '特殊形态-粒子特效(3D)'],
-  special2: ['特殊形态-通用', '特殊形态-线条动态(2D)', '特殊形态-物理破坏(真人)', '特殊形态-流体模拟(3D)'],
-  special3: ['特殊形态-通用', '特殊形态-光影涂抹(2D)', '特殊形态-实拍光效(真人)', '特殊形态-体积光(3D)'],
-  imgPrompt: [
-    '生图提示词-通用', '生图提示词-Niji动漫风', '生图提示词-电影级写实(Photo)', '生图提示词-Octane 3D渲染', '生图提示词-Midjourney默认'
+  special3: ['特殊状态(物)-通用', '特殊状态(物)-卡通道具(2D)', '特殊状态(物)-物理道具(真人)', '特殊状态(物)-高模道具(3D)'],
+  special2: ['特殊状态(景)-通用', '特殊状态(景)-手绘背景(2D)', '特殊状态(景)-实拍置景(真人)', '特殊状态(景)-环境渲染(3D)'],
+  special1: ['特殊状态(人)-通用', '特殊状态(人)-夸张表情(2D)', '特殊状态(人)-特效化妆(真人)', '特殊状态(人)-角色建模(3D)'],
+  
+  // Split Image Prompts
+  imgPromptProps: [
+    '主状态(物)-通用', '主状态(物)-Niji动漫风', '主状态(物)-产品级写实', '主状态(物)-Octane渲染', '主状态(物)-单体透视'
   ],
+  imgPromptScenes: [
+    '主状态(景)-通用', '主状态(景)-Niji动漫风', '主状态(景)-电影级写实', '主状态(景)-Unreal Engine 5', '主状态(景)-广角构图'
+  ],
+  imgPromptChars: [
+    '主状态(人)-通用', '主状态(人)-Niji动漫风', '主状态(人)-电影级写实', '主状态(人)-皮克斯风格', '主状态(人)-半身肖像'
+  ],
+
   storyboard: [
     '分镜-通用', '分镜-日式动画分镜', '分镜-电影实拍分镜', '分镜-3D动态预览', '分镜-广告分镜'
   ]
@@ -81,8 +92,8 @@ const createStyleConfig = (styleType: '2D' | 'REAL' | '3D'): Record<ConfigKeys, 
     const options = PROMPT_OPTIONS[key];
     const match = options.find(opt => {
       if (styleType === '2D') return opt.includes('2D') || opt.includes('动漫') || opt.includes('二次元') || opt.includes('动画') || opt.includes('日漫') || opt.includes('赛璐珞') || opt.includes('新海诚');
-      if (styleType === 'REAL') return opt.includes('真人') || opt.includes('写实') || opt.includes('实拍') || opt.includes('影视') || opt.includes('电影');
-      if (styleType === '3D') return opt.includes('3D') || opt.includes('渲染') || opt.includes('UE5') || opt.includes('建模') || opt.includes('皮克斯');
+      if (styleType === 'REAL') return opt.includes('真人') || opt.includes('写实') || opt.includes('实拍') || opt.includes('影视') || opt.includes('电影') || opt.includes('Photo') || opt.includes('产品级');
+      if (styleType === '3D') return opt.includes('3D') || opt.includes('渲染') || opt.includes('UE5') || opt.includes('建模') || opt.includes('皮克斯') || opt.includes('Octane') || opt.includes('Unreal');
       return false;
     });
     return match || options[0]; // Fallback to first option
@@ -323,16 +334,16 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, curren
                       {/* Controls Container */}
                       <div className="flex-1 flex space-x-[1px] bg-gray-300 relative">
                          {/* Disabled Overlay if not enabled */}
-                         {config[key].enabled === false && key !== 'worldview' && ( // Allow viewing worldview row but it might just be the switch for others
+                         {config[key] && config[key].enabled === false && key !== 'worldview' && ( // Allow viewing worldview row but it might just be the switch for others
                              <div className="absolute inset-0 bg-gray-200/50 z-10 cursor-not-allowed"></div>
                          )}
 
                          {/* Model Select */}
                          <div className="flex-1 bg-white p-1">
                             <select
-                              value={config[key].model}
+                              value={config[key] ? config[key].model : MODEL_OPTIONS[0]}
                               onChange={(e) => handleConfigChange(key, 'model', e.target.value)}
-                              disabled={config[key].enabled === false}
+                              disabled={config[key] && config[key].enabled === false}
                               className="w-full h-full bg-transparent text-gray-700 text-sm px-3 py-2 outline-none cursor-pointer hover:bg-gray-50 rounded transition-colors disabled:cursor-not-allowed disabled:text-gray-400"
                             >
                               {MODEL_OPTIONS.map(opt => (
@@ -343,7 +354,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, curren
 
                          {/* Prompt Select */}
                          <div className="flex-1 bg-white p-1 relative">
-                            {config[key].enabled !== false ? (
+                            {config[key] && config[key].enabled !== false ? (
                                 <SearchableSelect 
                                     options={PROMPT_OPTIONS[key]}
                                     value={config[key].prompt}
@@ -378,6 +389,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, curren
               </div>
             )}
 
+            {/* Placeholder for Gen Settings */}
             {activeTab === 'GEN' && (
               <div className="flex flex-col items-center justify-center h-64 text-gray-500 border-2 border-dashed border-gray-400 rounded-xl">
                 <p>暂无生成设置项</p>

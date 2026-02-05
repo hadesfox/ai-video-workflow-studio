@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Shot, Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError } from '../types';
-import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, Plus, Sparkles, RefreshCcw, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, Save, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, Plus, Sparkles, RefreshCw, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, Save, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface StageVideoProps {
   episodes: Episode[];
@@ -282,6 +282,7 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
         if (isError) {
             const errorData: GenerationError = {
                 id: Date.now().toString(),
+                shotId: shotId, // Fix: Added shotId
                 episodeName: activeEpisode?.name || 'Unknown Episode',
                 shotIndex: activeEpisode?.shots.findIndex(s => s.id === shotId)! + 1,
                 message: "生成请求被拒绝",

@@ -1073,7 +1073,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                            <div className="flex justify-between items-center mb-3">
                               <label className="flex items-center space-x-2 text-sm font-bold text-blue-400">
                                   <Sparkles size={16} />
-                                  <span>生图提示词 (Prompt)</span>
+                                  <span>主状态提示词 (Prompt)</span>
                               </label>
                            </div>
                            

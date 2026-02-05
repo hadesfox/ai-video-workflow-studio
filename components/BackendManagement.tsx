@@ -89,7 +89,12 @@ const CONFIG_KEYS = [
   { key: 'detailProps', label: '资产详情-道具', filterCode: 'asset_detail_props' },
   { key: 'detailScenes', label: '资产详情-场景', filterCode: 'asset_detail_scenes' },
   { key: 'detailChars', label: '资产详情-人物', filterCode: 'asset_detail_chars' },
-  { key: 'imgPrompt', label: '生图提示词', filterCode: 'image_gen_prompt' },
+  { key: 'special3', label: '特殊状态提示词-道具', filterCode: 'special_state_props' },
+  { key: 'special2', label: '特殊状态提示词-场景', filterCode: 'special_state_scenes' },
+  { key: 'special1', label: '特殊状态提示词-人物', filterCode: 'special_state_chars' },
+  { key: 'imgPromptProps', label: '主状态提示词-道具', filterCode: 'image_gen_prompt_props' },
+  { key: 'imgPromptScenes', label: '主状态提示词-场景', filterCode: 'image_gen_prompt_scenes' },
+  { key: 'imgPromptChars', label: '主状态提示词-人物', filterCode: 'image_gen_prompt_chars' },
   { key: 'storyboard', label: '分镜提示词', filterCode: 'storyboard_gen' },
 ];
 
@@ -132,9 +137,10 @@ const MOCK_CONFIG_LIST: ConfigItem[] = [
   { id: 'conf_det_c_01', name: '角色详情-真人写实', code: 'asset_detail_chars', type: '写实', provider: 'GEMINI', model: 'gemini-3-pro-preview', thinking: false },
   { id: 'conf_det_c_02', name: '角色详情-日漫风格', code: 'asset_detail_chars', type: '2D动画', provider: 'GEMINI', model: 'gemini-3-flash-preview', thinking: false },
 
-  // Image Gen
-  { id: 'conf_img_01', name: '生图-Midjourney V6适配', code: 'image_gen_prompt', type: 'MJ', provider: 'GEMINI', model: 'gemini-2.5-flash', thinking: false },
-  { id: 'conf_img_02', name: '生图-Stable Diffusion XL', code: 'image_gen_prompt', type: 'SD', provider: 'GEMINI', model: 'gemini-2.5-flash', thinking: false },
+  // Image Gen (Main State) - Updated to new categories
+  { id: 'conf_img_p_01', name: '主状态(物)-Midjourney V6', code: 'image_gen_prompt_props', type: 'MJ', provider: 'GEMINI', model: 'gemini-2.5-flash', thinking: false },
+  { id: 'conf_img_s_01', name: '主状态(景)-Midjourney V6', code: 'image_gen_prompt_scenes', type: 'MJ', provider: 'GEMINI', model: 'gemini-2.5-flash', thinking: false },
+  { id: 'conf_img_c_01', name: '主状态(人)-Midjourney V6', code: 'image_gen_prompt_chars', type: 'MJ', provider: 'GEMINI', model: 'gemini-2.5-flash', thinking: false },
 
   // Storyboard
   { id: 'conf_sb_01', name: '分镜-动态运镜描述', code: 'storyboard_gen', type: '视频', provider: 'GEMINI', model: 'gemini-3-pro-preview', thinking: true },
@@ -180,7 +186,9 @@ const INITIAL_TEMPLATES: TemplateConfig[] = [
       detailProps: { model: 'gemini-3-flash-preview', promptId: 'conf_det_p_02' }, // 2D
       detailScenes: { model: 'gemini-3-flash-preview', promptId: 'conf_det_s_02' }, // 2D
       detailChars: { model: 'gemini-3-flash-preview', promptId: 'conf_det_c_02' }, // 2D
-      imgPrompt: { model: 'gemini-2.5-flash', promptId: 'conf_img_01' },
+      imgPromptProps: { model: 'gemini-2.5-flash', promptId: 'conf_img_p_01' },
+      imgPromptScenes: { model: 'gemini-2.5-flash', promptId: 'conf_img_s_01' },
+      imgPromptChars: { model: 'gemini-2.5-flash', promptId: 'conf_img_c_01' },
       storyboard: { model: 'gemini-3-flash-preview', promptId: 'conf_sb_02' },
     }
   },
@@ -197,7 +205,9 @@ const INITIAL_TEMPLATES: TemplateConfig[] = [
       detailProps: { model: 'gemini-3-pro-preview', promptId: 'conf_det_p_01' }, // 3D/Real
       detailScenes: { model: 'gemini-3-pro-preview', promptId: 'conf_det_s_01' }, // Real
       detailChars: { model: 'gemini-3-pro-preview', promptId: 'conf_det_c_01' }, // Real
-      imgPrompt: { model: 'gemini-2.5-flash', promptId: 'conf_img_02' },
+      imgPromptProps: { model: 'gemini-2.5-flash', promptId: 'conf_img_p_01' },
+      imgPromptScenes: { model: 'gemini-2.5-flash', promptId: 'conf_img_s_01' },
+      imgPromptChars: { model: 'gemini-2.5-flash', promptId: 'conf_img_c_01' },
       storyboard: { model: 'gemini-3-pro-preview', promptId: 'conf_sb_01' },
     }
   },
@@ -214,7 +224,9 @@ const INITIAL_TEMPLATES: TemplateConfig[] = [
         detailProps: { model: 'gemini-3-flash-preview', promptId: 'conf_det_p_01' }, // 3D
         detailScenes: { model: 'gemini-3-flash-preview', promptId: 'conf_det_s_01' }, // Reuse Real
         detailChars: { model: 'gemini-3-flash-preview', promptId: 'conf_det_c_01' }, // Reuse Real
-        imgPrompt: { model: 'gemini-2.5-flash', promptId: 'conf_img_01' },
+        imgPromptProps: { model: 'gemini-2.5-flash', promptId: 'conf_img_p_01' },
+        imgPromptScenes: { model: 'gemini-2.5-flash', promptId: 'conf_img_s_01' },
+        imgPromptChars: { model: 'gemini-2.5-flash', promptId: 'conf_img_c_01' },
         storyboard: { model: 'gemini-3-flash-preview', promptId: 'conf_sb_01' },
     }
   }

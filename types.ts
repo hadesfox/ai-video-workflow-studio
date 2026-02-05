@@ -94,6 +94,7 @@ export interface WorldviewEntry {
 // New Error Interface
 export interface GenerationError {
   id: string;
+  shotId?: string; // Fix: Added optional shotId to track error source
   episodeName: string;
   shotIndex: number;
   message: string;
@@ -106,8 +107,9 @@ export type ConfigKeys =
   | 'indexProps' | 'indexScenes' | 'indexChars' 
   | 'worldview' 
   | 'detailProps' | 'detailScenes' | 'detailChars'
-  | 'special1' | 'special2' | 'special3'
-  | 'imgPrompt' | 'storyboard';
+  | 'special3' | 'special2' | 'special1'
+  | 'imgPromptProps' | 'imgPromptScenes' | 'imgPromptChars'
+  | 'storyboard';
 
 export interface AgentSettings {
   model: string;
