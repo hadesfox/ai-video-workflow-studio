@@ -20,6 +20,11 @@ export enum AssetSubTab {
   TTS = 'TTS'
 }
 
+export enum VideoSubTab {
+  VIDU = 'VIDU',
+  SEEDANCE = 'SEEDANCE'
+}
+
 export interface Project {
   id: string;
   name: string;

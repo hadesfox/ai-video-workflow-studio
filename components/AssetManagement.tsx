@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Asset, AssetState, AssetSubTab, WorldviewEntry } from '../types';
-import { Layers, Wand2, RefreshCw, Mic, Volume2, Sparkles, FileSearch, ImagePlus, User, Map, Box, X, ChevronRight, Check, Search, Settings2, Trash2, CheckSquare, Square, LayoutTemplate, List, AlertCircle, Play, Upload, Plus, Loader2, Globe2, FileText, File } from 'lucide-react';
+import { Layers, Wand2, RefreshCw, Mic, Volume2, Sparkles, FileSearch, ImagePlus, User, Map, Box, X, ChevronRight, Check, Search, Settings2, Trash2, CheckSquare, Square, LayoutTemplate, List, AlertCircle, Play, Upload, Plus, Loader2, Globe2, FileText, File, Palette } from 'lucide-react';
 
 interface AssetManagementProps {
   assets: Asset[];
@@ -44,6 +44,24 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
 
   // Script Preview Modal
   const [previewScript, setPreviewScript] = useState<{name: string, content: string} | null>(null);
+
+  // --- Style Reference State ---
+  const [showStyleRefModal, setShowStyleRefModal] = useState(false);
+  const [styleRefEnabled, setStyleRefEnabled] = useState(false);
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null); // Track selected style ID
+  const [customStyles, setCustomStyles] = useState<{id: string, name: string, url: string}[]>([]);
+  const [showUploadStyleModal, setShowUploadStyleModal] = useState(false);
+  const [newStyleForm, setNewStyleForm] = useState({ name: '', url: '' });
+
+  // Mock Preset Styles
+  const presetStyles = useMemo(() => [
+    { id: 'p1', name: '赛博朋克', url: 'https://picsum.photos/seed/style1/400/400' },
+    { id: 'p2', name: '水彩画', url: 'https://picsum.photos/seed/style2/400/400' },
+    { id: 'p3', name: '油画', url: 'https://picsum.photos/seed/style3/400/400' },
+    { id: 'p4', name: '素描', url: 'https://picsum.photos/seed/style4/400/400' },
+    { id: 'p5', name: '极简主义', url: 'https://picsum.photos/seed/style5/400/400' },
+    { id: 'p6', name: '浮世绘', url: 'https://picsum.photos/seed/style6/400/400' },
+  ], []);
 
   // Generation State
   const [processingLabel, setProcessingLabel] = useState<string | null>(null); // Global processing label (extract/detail/gen)
@@ -644,6 +662,32 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
       );
   }
 
+  // --- Style Reference Handlers ---
+  const handleStyleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+              const result = e.target?.result as string;
+              if (result) {
+                  setNewStyleForm(prev => ({ ...prev, url: result }));
+              }
+          };
+          reader.readAsDataURL(file);
+      }
+  };
+
+  const handleConfirmUploadStyle = () => {
+      if (!newStyleForm.name || !newStyleForm.url) return;
+      setCustomStyles(prev => [...prev, {
+          id: `custom-${Date.now()}`,
+          name: newStyleForm.name,
+          url: newStyleForm.url
+      }]);
+      setShowUploadStyleModal(false);
+      setNewStyleForm({ name: '', url: '' });
+  };
+
   if (subTab === AssetSubTab.TTS) {
      return (
         <div className="h-full flex flex-col space-y-6 animate-fade-in p-8">
@@ -683,6 +727,16 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
            </button>
 
            <div className="h-6 w-px bg-slate-700 mx-2"></div>
+
+           {/* Style Reference Button */}
+           <button 
+             onClick={() => setShowStyleRefModal(true)}
+             className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg border transition-colors text-sm ${styleRefEnabled ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-500 shadow-lg shadow-purple-900/20' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}`}
+           >
+             <Palette size={14} />
+             <span>风格参考</span>
+             {styleRefEnabled && <div className="w-2 h-2 rounded-full bg-green-400 ml-1 animate-pulse"></div>}
+           </button>
 
            {/* Worldview Button */}
            {worldview.length > 0 && (
@@ -1453,6 +1507,215 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                  </div>
              </div>
          </div>
+      )}
+
+      {/* Style Reference Modal */}
+      {showStyleRefModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
+            {/* Fixed size container */}
+            <div className="bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl overflow-hidden relative flex flex-col w-[900px] h-[650px] transition-all duration-500 ease-in-out">
+                
+                {/* Header Title (Always visible now, but maybe fade in/out based on state if desired, or keep static) */}
+                <div className={`absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-20 transition-opacity duration-300 ${styleRefEnabled ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <Palette className="text-purple-500" size={20} />
+                        风格参考
+                    </h3>
+                </div>
+
+                {/* Close Button */}
+                <button 
+                    onClick={() => setShowStyleRefModal(false)}
+                    className="absolute top-4 right-4 text-slate-500 hover:text-white z-20"
+                >
+                    <X size={24} />
+                </button>
+
+                {/* Content Container */}
+                <div className="flex-1 flex flex-col items-center justify-center relative p-8 pt-16">
+                    
+                    {/* Toggle Switch Container - Animated Position */}
+                    {/* When disabled: Centered. When enabled: Top Right */}
+                    <div className={`flex flex-col items-center transition-all duration-700 ease-in-out absolute z-30 ${styleRefEnabled ? 'top-5 right-16 scale-75 flex-row gap-3' : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 scale-150'}`}>
+                        <span className={`font-bold text-slate-200 transition-all ${styleRefEnabled ? 'text-sm' : 'text-sm mb-4'}`}>
+                            {styleRefEnabled ? '风格参考已开启' : '是否开启风格参考'}
+                        </span>
+                        <button 
+                            onClick={() => setStyleRefEnabled(!styleRefEnabled)}
+                            className={`relative rounded-full transition-colors duration-300 ${styleRefEnabled ? 'w-12 h-6 bg-blue-600' : 'w-12 h-6 bg-slate-700'}`}
+                        >
+                            <div className={`absolute top-1 bg-white rounded-full shadow-md transition-all duration-300 ${styleRefEnabled ? 'left-7 w-4 h-4' : 'left-1 w-4 h-4'}`}></div>
+                        </button>
+                    </div>
+
+                    {/* Main Content - Fades in when enabled */}
+                    <div className={`w-full h-full flex flex-col gap-4 transition-all duration-700 ${styleRefEnabled ? 'opacity-100 translate-y-0 delay-300' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+                        
+                        <div className="flex-1 flex gap-8 min-h-0">
+                            {/* Left: Preset Styles */}
+                            <div className="flex-1 flex flex-col min-w-0">
+                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <Sparkles size={16} /> 预设风格
+                                </h3>
+                                <div className="grid grid-cols-3 gap-4 overflow-y-auto p-1 custom-scrollbar pr-2">
+                                    {presetStyles.map(style => (
+                                        <div 
+                                            key={style.id} 
+                                            onClick={() => setSelectedStyle(style.id)}
+                                            className={`group relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${selectedStyle === style.id ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700 hover:border-blue-400'}`}
+                                        >
+                                            <img src={style.url} alt={style.name} className="w-full h-full object-cover" />
+                                            <div className={`absolute bottom-0 left-0 right-0 p-2 transition-colors ${selectedStyle === style.id ? 'bg-blue-600' : 'bg-black/60'}`}>
+                                                <span className="text-xs font-medium text-white block text-center">{style.name}</span>
+                                            </div>
+                                            
+                                            {/* Selected Indicator */}
+                                            {selectedStyle === style.id && (
+                                                <div className="absolute top-2 right-2 bg-blue-500 rounded-full p-1 shadow-lg">
+                                                    <Check size={12} className="text-white" />
+                                                </div>
+                                            )}
+
+                                            {/* Hover Large Preview (Full Image) */}
+                                            <div className="hidden group-hover:block fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-slate-900 border-2 border-blue-500 rounded-xl shadow-2xl z-50 pointer-events-none animate-scale-in">
+                                                <img src={style.url} alt={style.name} className="w-full h-full object-contain bg-black/50 rounded-lg" />
+                                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 px-3 py-1.5 rounded-full text-sm text-white font-medium border border-white/10 backdrop-blur-md">
+                                                    {style.name}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="w-px bg-slate-800 my-4"></div>
+
+                            {/* Right: Custom Styles */}
+                            <div className="flex-1 flex flex-col min-w-0">
+                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <User size={16} /> 自定义风格
+                                </h3>
+                                <div className="grid grid-cols-3 gap-4 overflow-y-auto p-1 custom-scrollbar pr-2">
+                                    {customStyles.map(style => (
+                                        <div 
+                                            key={style.id} 
+                                            onClick={() => setSelectedStyle(style.id)}
+                                            className={`group relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${selectedStyle === style.id ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-slate-700 hover:border-purple-400'}`}
+                                        >
+                                            <img src={style.url} alt={style.name} className="w-full h-full object-cover" />
+                                            <div className={`absolute bottom-0 left-0 right-0 p-2 transition-colors ${selectedStyle === style.id ? 'bg-purple-600' : 'bg-black/60'}`}>
+                                                <span className="text-xs font-medium text-white block text-center">{style.name}</span>
+                                            </div>
+
+                                            {/* Selected Indicator */}
+                                            {selectedStyle === style.id && (
+                                                <div className="absolute top-2 right-2 bg-purple-500 rounded-full p-1 shadow-lg">
+                                                    <Check size={12} className="text-white" />
+                                                </div>
+                                            )}
+
+                                            {/* Hover Large Preview (Full Image) */}
+                                            <div className="hidden group-hover:block fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-slate-900 border-2 border-purple-500 rounded-xl shadow-2xl z-50 pointer-events-none animate-scale-in">
+                                                <img src={style.url} alt={style.name} className="w-full h-full object-contain bg-black/50 rounded-lg" />
+                                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 px-3 py-1.5 rounded-full text-sm text-white font-medium border border-white/10 backdrop-blur-md">
+                                                    {style.name}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    
+                                    {/* Upload Button */}
+                                    <button 
+                                        onClick={() => setShowUploadStyleModal(true)}
+                                        className="aspect-square rounded-xl border-2 border-dashed border-slate-700 hover:border-slate-500 hover:bg-slate-800 transition-all flex flex-col items-center justify-center text-slate-500 hover:text-slate-300 gap-2"
+                                    >
+                                        <Upload size={24} />
+                                        <span className="text-xs font-medium">上传风格</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Action */}
+                        <div className="h-16 border-t border-slate-800 flex items-center justify-end gap-4 pt-4 mt-2">
+                            <div className="text-sm text-slate-500 mr-auto">
+                                {selectedStyle ? '已选择风格，点击确认生效' : '请选择一个风格作为参考'}
+                            </div>
+                            <button 
+                                onClick={() => setShowStyleRefModal(false)}
+                                className="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                            >
+                                取消
+                            </button>
+                            <button 
+                                onClick={() => setShowStyleRefModal(false)}
+                                disabled={!selectedStyle}
+                                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium shadow-lg shadow-blue-900/20 transition-all active:scale-95"
+                            >
+                                确认风格
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* Upload Style Modal */}
+      {showUploadStyleModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-slate-900 w-full max-w-md rounded-xl border border-slate-700 shadow-2xl p-6 animate-scale-in">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-bold text-white">上传自定义风格</h3>
+                    <button onClick={() => setShowUploadStyleModal(false)} className="text-slate-500 hover:text-white">
+                        <X size={20} />
+                    </button>
+                </div>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">风格名称</label>
+                        <input 
+                            type="text" 
+                            value={newStyleForm.name}
+                            onChange={(e) => setNewStyleForm(prev => ({ ...prev, name: e.target.value }))}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-blue-500 outline-none"
+                            placeholder="例如：赛博朋克 2077"
+                        />
+                    </div>
+                    
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">参考图片</label>
+                        <div className="relative w-full aspect-video bg-slate-950 border-2 border-dashed border-slate-700 rounded-lg overflow-hidden hover:border-slate-500 transition-colors group">
+                            {newStyleForm.url ? (
+                                <img src={newStyleForm.url} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 pointer-events-none">
+                                    <ImagePlus size={32} className="mb-2 opacity-50" />
+                                    <span className="text-xs">点击上传图片</span>
+                                </div>
+                            )}
+                            <input 
+                                type="file" 
+                                accept="image/*"
+                                onChange={handleStyleUpload}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                        </div>
+                    </div>
+
+                    <button 
+                        onClick={handleConfirmUploadStyle}
+                        disabled={!newStyleForm.name || !newStyleForm.url}
+                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium shadow-lg shadow-blue-900/20 mt-4"
+                    >
+                        确认上传
+                    </button>
+                </div>
+            </div>
+        </div>
       )}
 
       {/* NEW: Global Loading Overlay */}

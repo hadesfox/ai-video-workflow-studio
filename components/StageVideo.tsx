@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Shot, Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError } from '../types';
+import { Shot, Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab } from '../types';
 import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, Plus, Sparkles, RefreshCw, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, Save, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface StageVideoProps {
@@ -13,9 +13,10 @@ interface StageVideoProps {
   onNext: () => void;
   hasVisitedVideo: boolean;
   setHasVisitedVideo: (visited: boolean) => void;
+  subTab?: VideoSubTab; // Optional prop for subTab
 }
 
-const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, videoSettings, setVideoSettings, setEditorClips, goToAssets, onNext, hasVisitedVideo, setHasVisitedVideo }) => {
+const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, videoSettings, setVideoSettings, setEditorClips, goToAssets, onNext, hasVisitedVideo, setHasVisitedVideo, subTab = VideoSubTab.VIDU }) => {
   // --- Sidebar & Layout State ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isPinned, setIsPinned] = useState(false); // Default to unpinned per request
@@ -577,8 +578,6 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                <h2 className="text-lg font-bold text-white">{activeEpisode?.name}</h2>
             </div>
             
-            {/* Removed Centralized Error Notification Button */}
-
             <div className="flex items-center gap-3">
                <button 
                   onClick={(e) => { e.stopPropagation(); handleFullDownload(); }}
@@ -614,16 +613,18 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                </button>
                <div className="w-px h-6 bg-slate-800 mx-1"></div>
                
-               {/* Global Action 1: Subject Video */}
-               <button 
-                  onClick={(e) => { e.stopPropagation(); handleOneClickVideo('SUBJECT'); }}
-                  disabled={!activeEpisode?.shots.length || isBatchGenerating}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-purple-900/20 disabled:opacity-50 transition-all active:scale-95"
-               >
-                  {isBatchGenerating && <Loader2 className="animate-spin" size={16} />}
-                  <User size={16} />
-                  <span>一键生成主体视频</span>
-               </button>
+               {/* Global Action 1: Subject Video (Only visible in VIDU tab) */}
+               {subTab === VideoSubTab.VIDU && (
+                   <button 
+                      onClick={(e) => { e.stopPropagation(); handleOneClickVideo('SUBJECT'); }}
+                      disabled={!activeEpisode?.shots.length || isBatchGenerating}
+                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-purple-900/20 disabled:opacity-50 transition-all active:scale-95"
+                   >
+                      {isBatchGenerating && <Loader2 className="animate-spin" size={16} />}
+                      <User size={16} />
+                      <span>一键生成主体视频</span>
+                   </button>
+               )}
 
                {/* Global Action 2: Image Video */}
                <button 

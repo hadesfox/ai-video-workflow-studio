@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MainTab, AssetSubTab, Project, Asset, Episode, VideoSettings, TimelineClip, WorldviewEntry, ConfigKeys, AgentSettings } from './types';
+import { MainTab, AssetSubTab, VideoSubTab, Project, Asset, Episode, VideoSettings, TimelineClip, WorldviewEntry, ConfigKeys, AgentSettings } from './types';
 import ProjectSelection from './components/ProjectSelection';
 import AssetManagement from './components/AssetManagement';
 import StageMasterLib from './components/StageMasterLib'; // Reuse existing component
@@ -149,6 +149,7 @@ const App: React.FC = () => {
   // --- Global State ---
   const [currentTab, setCurrentTab] = useState<MainTab>(MainTab.PROJECTS);
   const [assetSubTab, setAssetSubTab] = useState<AssetSubTab>(AssetSubTab.IMAGES);
+  const [videoSubTab, setVideoSubTab] = useState<VideoSubTab>(VideoSubTab.VIDU);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   
@@ -326,6 +327,7 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
             onNext={() => setCurrentTab(MainTab.EDITOR)}
             hasVisitedVideo={hasVisitedVideo}
             setHasVisitedVideo={setHasVisitedVideo}
+            subTab={videoSubTab}
           />
         );
       case MainTab.EDITOR:
@@ -407,6 +409,24 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
                         className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${assetSubTab === AssetSubTab.TTS ? 'text-blue-400' : 'text-slate-500'}`}
                       >
                         TTS配音
+                      </span>
+                   </div>
+                 )}
+
+                 {isActive && tab.id === MainTab.VIDEO && (
+                   <div className="flex space-x-3 mt-1 mb-1 text-[10px] font-bold tracking-wide animate-fade-in">
+                      <span 
+                        onClick={(e) => { e.stopPropagation(); setVideoSubTab(VideoSubTab.VIDU); }}
+                        className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${videoSubTab === VideoSubTab.VIDU ? 'text-blue-400' : 'text-slate-500'}`}
+                      >
+                        Vidu
+                      </span>
+                      <span className="text-slate-700">|</span>
+                      <span 
+                        onClick={(e) => { e.stopPropagation(); setVideoSubTab(VideoSubTab.SEEDANCE); }}
+                        className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${videoSubTab === VideoSubTab.SEEDANCE ? 'text-blue-400' : 'text-slate-500'}`}
+                      >
+                        Seedance
                       </span>
                    </div>
                  )}
