@@ -1575,14 +1575,6 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                                                     <Check size={12} className="text-white" />
                                                 </div>
                                             )}
-
-                                            {/* Hover Large Preview (Full Image) */}
-                                            <div className="hidden group-hover:block fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-slate-900 border-2 border-blue-500 rounded-xl shadow-2xl z-50 pointer-events-none animate-scale-in">
-                                                <img src={style.url} alt={style.name} className="w-full h-full object-contain bg-black/50 rounded-lg" />
-                                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 px-3 py-1.5 rounded-full text-sm text-white font-medium border border-white/10 backdrop-blur-md">
-                                                    {style.name}
-                                                </div>
-                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -1614,14 +1606,6 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                                                     <Check size={12} className="text-white" />
                                                 </div>
                                             )}
-
-                                            {/* Hover Large Preview (Full Image) */}
-                                            <div className="hidden group-hover:block fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-slate-900 border-2 border-purple-500 rounded-xl shadow-2xl z-50 pointer-events-none animate-scale-in">
-                                                <img src={style.url} alt={style.name} className="w-full h-full object-contain bg-black/50 rounded-lg" />
-                                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 px-3 py-1.5 rounded-full text-sm text-white font-medium border border-white/10 backdrop-blur-md">
-                                                    {style.name}
-                                                </div>
-                                            </div>
                                         </div>
                                     ))}
                                     

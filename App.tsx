@@ -159,6 +159,21 @@ const App: React.FC = () => {
   // New: Global state to track if user has visited video page (for one-time modal)
   const [hasVisitedVideo, setHasVisitedVideo] = useState(false);
 
+  // Usage Stats State
+  const [showUsageStats, setShowUsageStats] = useState(false);
+  const usageStatsRef = useRef<HTMLDivElement>(null);
+
+  // Close usage stats when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (usageStatsRef.current && !usageStatsRef.current.contains(event.target as Node)) {
+        setShowUsageStats(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Data State
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -437,6 +452,41 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
 
         {/* Right Settings & User */}
         <div className="flex items-center space-x-4 ml-8">
+           {/* Usage Stats (New Feature) */}
+           {project && (
+              <div className="relative" ref={usageStatsRef}>
+                 <button 
+                    onClick={() => setShowUsageStats(!showUsageStats)}
+                    className="flex items-center space-x-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-full transition-all group"
+                 >
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span className="text-xs font-mono text-slate-400 group-hover:text-slate-200">¥ 12.50</span>
+                 </button>
+                 
+                 {showUsageStats && (
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-3 animate-scale-in origin-top-right z-50 flex flex-col gap-2">
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-500">Token 消耗</span>
+                          <span className="text-slate-300 font-mono">15,230</span>
+                       </div>
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-500">图片消耗</span>
+                          <span className="text-slate-300 font-mono">128 张</span>
+                       </div>
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-500">视频消耗</span>
+                          <span className="text-slate-300 font-mono">12 分钟</span>
+                       </div>
+                       <div className="h-px bg-slate-800 my-1"></div>
+                       <div className="flex justify-between items-center text-xs font-bold">
+                          <span className="text-slate-400">总计</span>
+                          <span className="text-green-400 font-mono">¥ 12.50</span>
+                       </div>
+                    </div>
+                 )}
+              </div>
+           )}
+
            {project && (
              <div className="hidden xl:flex items-center space-x-2 text-xs text-slate-500 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-full">
                 <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
