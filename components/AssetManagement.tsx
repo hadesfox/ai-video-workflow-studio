@@ -613,7 +613,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
       return (
           <div className="h-full flex flex-col p-8 animate-fade-in relative">
               <div className="flex justify-between items-center pb-4 border-b border-slate-800 mb-6">
-                  <h3 className="text-xl font-semibold text-white">剧集管理</h3>
+                  <h3 className="text-xl font-semibold">剧集管理</h3>
                   <div className="text-sm text-slate-500">共 {mockEpisodes.length} 集</div>
               </div>
               
@@ -692,7 +692,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
      return (
         <div className="h-full flex flex-col space-y-6 animate-fade-in p-8">
            <div className="flex justify-between items-center pb-4 border-b border-slate-800">
-              <h3 className="text-xl font-semibold text-white">TTS 配音生成</h3>
+              <h3 className="text-xl font-semibold">TTS 配音生成</h3>
               <button className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm flex items-center space-x-2">
                 <Mic size={16} /><span>生成所有配音</span>
               </button>

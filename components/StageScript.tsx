@@ -44,7 +44,7 @@ const StageScript: React.FC<StageScriptProps> = ({ project, setProject, onNext }
   if (view === 'SELECT') {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-8 animate-fade-in">
-        <h2 className="text-3xl font-light text-slate-100">欢迎使用 Vidu Studio</h2>
+        <h2 className="text-3xl font-light">欢迎使用 Vidu Studio</h2>
         <div className="grid grid-cols-2 gap-6 w-full max-w-2xl">
           <button 
             onClick={handleCreateProject}
@@ -127,7 +127,7 @@ const StageScript: React.FC<StageScriptProps> = ({ project, setProject, onNext }
             <Activity className="absolute inset-0 m-auto text-blue-500 animate-pulse" size={32} />
           </div>
           <div>
-            <h3 className="text-xl font-medium text-white mb-2">AI 智能体正在工作中</h3>
+            <h3 className="text-xl font-medium mb-2">AI 智能体正在工作中</h3>
             <p className="text-slate-400">正在解析剧本... 识别角色... 构建世界模型...</p>
           </div>
           <div className="flex gap-4 justify-center text-xs font-mono text-slate-500 mt-4">

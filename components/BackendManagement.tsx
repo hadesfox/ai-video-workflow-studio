@@ -29,7 +29,10 @@ import {
   ToggleRight,
   Filter,
   ChevronDown,
-  List
+  List,
+  BarChart3,
+  Calendar,
+  ArrowDownUp
 } from 'lucide-react';
 
 interface BackendManagementProps {
@@ -50,9 +53,15 @@ interface UserAccount {
   username: string;
   email: string;
   roleId: string;
+  groupId?: string;
   permissions: string[]; // Extra specific permissions
   status: 'ACTIVE' | 'INACTIVE';
   lastLogin: string;
+}
+
+interface ProjectGroup {
+  id: string;
+  name: string;
 }
 
 interface Role {
@@ -165,10 +174,16 @@ const INITIAL_ROLES: Role[] = [
   { id: 'VIEWER', name: '访客 (Viewer)', permissions: ['SYS_VIEW', 'PROMPT_READ'] },
 ];
 
+const INITIAL_GROUPS: ProjectGroup[] = [
+  { id: 'g1', name: '设计A组' },
+  { id: 'g2', name: '设计B组' },
+  { id: 'g3', name: '开发组' },
+];
+
 const INITIAL_USERS: UserAccount[] = [
-  { id: 'u1', username: 'Admin', email: 'admin@vidustudio.com', roleId: 'ADMIN', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:00' },
-  { id: 'u2', username: 'Editor01', email: 'editor@vidustudio.com', roleId: 'EDITOR', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 15:30' },
-  { id: 'u3', username: 'Guest', email: 'guest@vidustudio.com', roleId: 'VIEWER', permissions: [], status: 'INACTIVE', lastLogin: '2023-09-01 09:00' },
+  { id: 'u1', username: 'Admin', email: 'admin@vidustudio.com', roleId: 'ADMIN', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:00' },
+  { id: 'u2', username: 'Editor01', email: 'editor@vidustudio.com', roleId: 'EDITOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 15:30' },
+  { id: 'u3', username: 'Guest', email: 'guest@vidustudio.com', roleId: 'VIEWER', groupId: 'g2', permissions: [], status: 'INACTIVE', lastLogin: '2023-09-01 09:00' },
 ];
 
 // Pre-configured templates with IDs from MOCK_CONFIG_LIST
@@ -355,8 +370,11 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
   // --- Account & Role State ---
   const [users, setUsers] = useState<UserAccount[]>(INITIAL_USERS);
   const [roles, setRoles] = useState<Role[]>(INITIAL_ROLES);
+  const [groups, setGroups] = useState<ProjectGroup[]>(INITIAL_GROUPS);
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
   
   // User Permissions Drawer
   const [showUserPermDrawer, setShowUserPermDrawer] = useState(false);
@@ -384,12 +402,39 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
   });
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // --- Usage Stats State ---
+  const [usageFilterType, setUsageFilterType] = useState<'INDIVIDUAL' | 'GROUP'>('INDIVIDUAL');
+  const [usageSortOrder, setUsageSortOrder] = useState<'ASC' | 'DESC'>('DESC');
+  const [usageDateRange, setUsageDateRange] = useState({ start: '', end: '' });
+
+  const MOCK_USAGE_INDIVIDUAL = [
+    { id: '1', name: '张三', group: '设计A组', generations: 120, tokens: 450000, cost: 12.5 },
+    { id: '2', name: '李四', group: '设计B组', generations: 85, tokens: 320000, cost: 8.9 },
+    { id: '3', name: '王五', group: '设计A组', generations: 210, tokens: 890000, cost: 24.5 },
+    { id: '4', name: '赵六', group: '开发组', generations: 45, tokens: 150000, cost: 4.2 },
+  ];
+
+  const MOCK_USAGE_GROUP = [
+    { id: 'g1', group: '设计A组', generations: 330, tokens: 1340000, cost: 37.0 },
+    { id: 'g2', group: '设计B组', generations: 85, tokens: 320000, cost: 8.9 },
+    { id: 'g3', group: '开发组', generations: 45, tokens: 150000, cost: 4.2 },
+  ];
+
+  const sortedIndividual = [...MOCK_USAGE_INDIVIDUAL].sort((a, b) => {
+      return usageSortOrder === 'ASC' ? a.cost - b.cost : b.cost - a.cost;
+  });
+
+  const sortedGroup = [...MOCK_USAGE_GROUP].sort((a, b) => {
+      return usageSortOrder === 'ASC' ? a.cost - b.cost : b.cost - a.cost;
+  });
+
   const menuItems = [
     { id: 'CONFIG_MGMT', label: '提示词配置管理', icon: LayoutGrid },
     { id: 'TYPE_MGMT', label: '提示词类型管理', icon: Settings },
     { id: 'CHATBOT', label: 'Chatbot', icon: MessageSquare },
     { id: 'TEMPLATE_CONFIG', label: '提示词模板配置', icon: FileText },
     { id: 'ACCOUNT_MGMT', label: '账号管理', icon: Users },
+    { id: 'USAGE_STATS', label: '消耗统计', icon: BarChart3 },
   ];
 
   // Mock data for Type Management table
@@ -455,15 +500,17 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
     const username = formData.get('username') as string;
     const email = formData.get('email') as string;
     const roleId = formData.get('roleId') as string;
+    const groupId = formData.get('groupId') as string;
     
     if (editingUser) {
-      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, username, email, roleId } : u));
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, username, email, roleId, groupId } : u));
     } else {
       const newUser: UserAccount = {
         id: `u_${Date.now()}`,
         username,
         email,
         roleId,
+        groupId,
         permissions: [],
         status: 'ACTIVE',
         lastLogin: '-'
@@ -472,6 +519,21 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
     }
     setShowUserModal(false);
     setEditingUser(null);
+  };
+
+  const handleUserGroupChange = (userId: string, groupId: string) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, groupId } : u));
+  };
+
+  const handleAddGroup = () => {
+    if (!newGroupName.trim()) return;
+    const newGroup: ProjectGroup = {
+      id: `g_${Date.now()}`,
+      name: newGroupName,
+    };
+    setGroups([...groups, newGroup]);
+    setShowAddGroupModal(false);
+    setNewGroupName('');
   };
 
   const handleDeleteUser = (userId: string) => {
@@ -943,6 +1005,12 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
                      </div>
                      <div className="flex gap-3">
                         <button 
+                            onClick={() => setShowAddGroupModal(true)}
+                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-emerald-500/20"
+                        >
+                            <Plus size={16} /> 新增项目组
+                        </button>
+                        <button 
                             onClick={() => { setEditingUser(null); setShowUserModal(true); }}
                             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-500/20"
                         >
@@ -959,12 +1027,13 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
                   </div>
 
                   <div className="w-full overflow-x-auto">
-                     <div className="min-w-[900px] grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                     <div className="min-w-[1000px] grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         <div className="col-span-3">用户信息</div>
                         <div className="col-span-2">角色 (Role)</div>
-                        <div className="col-span-3">权限预览</div>
+                        <div className="col-span-2">项目组 (Group)</div>
+                        <div className="col-span-2">权限预览</div>
                         <div className="col-span-1 text-center">状态</div>
-                        <div className="col-span-2">最后登录</div>
+                        <div className="col-span-1">最后登录</div>
                         <div className="col-span-1 text-right">操作</div>
                      </div>
 
@@ -974,7 +1043,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
                         const effectivePerms = getUserPermissions(user);
 
                         return (
-                        <div key={user.id} className="min-w-[900px] grid grid-cols-12 gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors items-center text-sm text-slate-700 dark:text-slate-300">
+                        <div key={user.id} className="min-w-[1000px] grid grid-cols-12 gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors items-center text-sm text-slate-700 dark:text-slate-300">
                            <div className="col-span-3 flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300">
                                  {user.username.charAt(0).toUpperCase()}
@@ -993,7 +1062,19 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
                                   {roleName}
                                </span>
                            </div>
-                           <div className="col-span-3 flex flex-wrap gap-1">
+                           <div className="col-span-2">
+                              <select
+                                 value={user.groupId || ''}
+                                 onChange={(e) => handleUserGroupChange(user.id, e.target.value)}
+                                 className="bg-transparent border border-slate-200 dark:border-slate-700 rounded p-1.5 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 w-full"
+                              >
+                                 <option value="">无</option>
+                                 {groups.map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                 ))}
+                              </select>
+                           </div>
+                           <div className="col-span-2 flex flex-wrap gap-1">
                               {effectivePerms.slice(0, 3).map(pId => {
                                 const p = PERMISSIONS_LIST.find(def => def.id === pId);
                                 return p ? (
@@ -1009,7 +1090,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
                                 <span className="w-2 h-2 rounded-full bg-red-500" title="Inactive"></span>
                               )}
                            </div>
-                           <div className="col-span-2 text-xs text-slate-500 font-mono">
+                           <div className="col-span-1 text-xs text-slate-500 font-mono">
                               {user.lastLogin}
                            </div>
                            <div className="col-span-1 flex justify-end gap-2">
@@ -1038,6 +1119,102 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
                         </div>
                      );
                     })}
+                  </div>
+               </div>
+            )}
+
+            {/* USAGE_STATS: 消耗统计 */}
+            {activeTab === 'USAGE_STATS' && (
+               <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in flex flex-col h-full">
+                  <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
+                     <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                           <Filter size={16} className="text-slate-400" />
+                           <select 
+                              value={usageFilterType}
+                              onChange={(e) => setUsageFilterType(e.target.value as 'INDIVIDUAL' | 'GROUP')}
+                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500"
+                           >
+                              <option value="INDIVIDUAL">按照个人消耗统计</option>
+                              <option value="GROUP">按照小组消耗统计</option>
+                           </select>
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <ArrowDownUp size={16} className="text-slate-400" />
+                           <select 
+                              value={usageSortOrder}
+                              onChange={(e) => setUsageSortOrder(e.target.value as 'ASC' | 'DESC')}
+                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500"
+                           >
+                              <option value="DESC">降序</option>
+                              <option value="ASC">升序</option>
+                           </select>
+                        </div>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <Calendar size={16} className="text-slate-400" />
+                        <div className="flex items-center gap-2">
+                           <input 
+                              type="date" 
+                              value={usageDateRange.start}
+                              onChange={(e) => setUsageDateRange({...usageDateRange, start: e.target.value})}
+                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500"
+                           />
+                           <span className="text-slate-400">-</span>
+                           <input 
+                              type="date" 
+                              value={usageDateRange.end}
+                              onChange={(e) => setUsageDateRange({...usageDateRange, end: e.target.value})}
+                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500"
+                           />
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="flex-1 overflow-auto">
+                     <div className="min-w-[800px]">
+                        {usageFilterType === 'INDIVIDUAL' ? (
+                           <>
+                              <div className="grid grid-cols-5 gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider sticky top-0 backdrop-blur-sm z-10">
+                                 <div>姓名</div>
+                                 <div>所属小组</div>
+                                 <div className="text-right">生成次数</div>
+                                 <div className="text-right">消耗 Token</div>
+                                 <div className="text-right">消耗费用 (¥)</div>
+                              </div>
+                              {sortedIndividual.map((item) => (
+                                 <div key={item.id} className="grid grid-cols-5 gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors items-center text-sm text-slate-700 dark:text-slate-300">
+                                    <div className="font-medium">{item.name}</div>
+                                    <div>
+                                       <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs">{item.group}</span>
+                                    </div>
+                                    <div className="text-right font-mono">{item.generations.toLocaleString()}</div>
+                                    <div className="text-right font-mono text-slate-500">{item.tokens.toLocaleString()}</div>
+                                    <div className="text-right font-mono font-bold text-green-600 dark:text-green-400">{item.cost.toFixed(2)}</div>
+                                 </div>
+                              ))}
+                           </>
+                        ) : (
+                           <>
+                              <div className="grid grid-cols-4 gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider sticky top-0 backdrop-blur-sm z-10">
+                                 <div>小组名</div>
+                                 <div className="text-right">生成次数</div>
+                                 <div className="text-right">消耗 Token</div>
+                                 <div className="text-right">消耗费用 (¥)</div>
+                              </div>
+                              {sortedGroup.map((item) => (
+                                 <div key={item.id} className="grid grid-cols-4 gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors items-center text-sm text-slate-700 dark:text-slate-300">
+                                    <div className="font-medium">
+                                       <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-2 py-1 rounded border border-blue-200 dark:border-blue-800/50">{item.group}</span>
+                                    </div>
+                                    <div className="text-right font-mono">{item.generations.toLocaleString()}</div>
+                                    <div className="text-right font-mono text-slate-500">{item.tokens.toLocaleString()}</div>
+                                    <div className="text-right font-mono font-bold text-green-600 dark:text-green-400">{item.cost.toFixed(2)}</div>
+                                 </div>
+                              ))}
+                           </>
+                        )}
+                     </div>
                   </div>
                </div>
             )}
@@ -1165,6 +1342,19 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
                         ))}
                      </select>
                   </div>
+                  <div>
+                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-1">项目组</label>
+                     <select 
+                        name="groupId"
+                        defaultValue={editingUser?.groupId || ''}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:border-blue-500 text-slate-900 dark:text-white"
+                     >
+                        <option value="">无</option>
+                        {groups.map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                     </select>
+                  </div>
                   
                   {!editingUser && (
                      <div className="p-3 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/30 rounded-lg flex gap-2 items-start text-xs text-yellow-700 dark:text-yellow-400">
@@ -1178,6 +1368,27 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
                      <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-md">保存</button>
                   </div>
                </form>
+            </div>
+         </div>
+      )}
+
+      {/* Add Group Modal */}
+      {showAddGroupModal && (
+         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-4">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-xl shadow-2xl p-6 border border-slate-200 dark:border-slate-800 animate-scale-in">
+               <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">新增项目组</h3>
+               <input 
+                  type="text" 
+                  value={newGroupName} 
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  placeholder="输入项目组名称 (如: 设计A组)"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-3 mb-6 focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
+                  autoFocus
+               />
+               <div className="flex justify-end gap-3">
+                  <button onClick={() => setShowAddGroupModal(false)} className="px-4 py-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors">取消</button>
+                  <button onClick={handleAddGroup} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">确认添加</button>
+               </div>
             </div>
          </div>
       )}

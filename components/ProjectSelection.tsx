@@ -204,7 +204,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
       {/* Header */}
       <div className="flex justify-between items-end mb-8 border-b border-slate-800 pb-4">
         <div>
-           <h2 className="text-3xl font-bold text-white mb-2">项目库</h2>
+           <h2 className="text-3xl font-bold mb-2">项目库</h2>
            <p className="text-slate-400">选择一个项目开始创作，或创建新剧本。</p>
         </div>
       </div>
@@ -248,7 +248,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
               </button>
             </div>
             <div className="flex-1">
-               <h3 className="text-lg font-semibold text-white mb-2 line-clamp-1 group-hover:text-blue-400 transition-colors">
+               <h3 className="text-lg font-semibold mb-2 line-clamp-1 group-hover:text-blue-400 transition-colors">
                  {proj.name}
                </h3>
                <div className="flex items-center space-x-2 text-xs text-slate-500 mb-4">

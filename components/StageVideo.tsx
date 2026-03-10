@@ -14,9 +14,10 @@ interface StageVideoProps {
   hasVisitedVideo: boolean;
   setHasVisitedVideo: (visited: boolean) => void;
   subTab?: VideoSubTab; // Optional prop for subTab
+  setSubTab?: (tab: VideoSubTab) => void; // Added setter
 }
 
-const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, videoSettings, setVideoSettings, setEditorClips, goToAssets, onNext, hasVisitedVideo, setHasVisitedVideo, subTab = VideoSubTab.VIDU }) => {
+const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, videoSettings, setVideoSettings, setEditorClips, goToAssets, onNext, hasVisitedVideo, setHasVisitedVideo, subTab = VideoSubTab.VIDU, setSubTab }) => {
   // --- Sidebar & Layout State ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isPinned, setIsPinned] = useState(false); // Default to unpinned per request
@@ -578,6 +579,30 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                <h2 className="text-lg font-bold text-white">{activeEpisode?.name}</h2>
             </div>
             
+            {/* Center Tabs */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex bg-slate-800/50 p-1 rounded-lg border border-slate-700/50">
+               <button 
+                  onClick={() => setSubTab && setSubTab(VideoSubTab.VIDU)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                     subTab === VideoSubTab.VIDU 
+                     ? 'bg-blue-600 text-white shadow-lg' 
+                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  }`}
+               >
+                  Vidu
+               </button>
+               <button 
+                  onClick={() => setSubTab && setSubTab(VideoSubTab.SEEDANCE)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                     subTab === VideoSubTab.SEEDANCE 
+                     ? 'bg-blue-600 text-white shadow-lg' 
+                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  }`}
+               >
+                  Seedance
+               </button>
+            </div>
+
             <div className="flex items-center gap-3">
                <button 
                   onClick={(e) => { e.stopPropagation(); handleFullDownload(); }}
