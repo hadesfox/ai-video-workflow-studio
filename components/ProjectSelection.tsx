@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Project } from '../types';
-import { Plus, FolderOpen, Clock, FileText, ArrowRight, Edit2, Trash2, X, Sparkles, BookOpen, Mic, CheckCircle2, ArrowRightLeft, PlayCircle, Film, UploadCloud, File as FileIcon, Eye, Check, AlignLeft, AlertCircle, Settings } from 'lucide-react';
+import { Plus, FolderOpen, Clock, FileText, ArrowRight, Edit2, Trash2, X, Sparkles, BookOpen, Mic, CheckCircle2, ArrowRightLeft, Film, UploadCloud, File as FileIcon, Eye, Check, AlignLeft, Settings } from 'lucide-react';
 
 interface ProjectSelectionProps {
   currentProject: Project | null;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCheck, MonitorPlay, Film, Share, Download, ExternalLink } from 'lucide-react';
+import { CheckCheck, MonitorPlay, Film, Download, ExternalLink } from 'lucide-react';
 
 const StageExport: React.FC = () => {
   return (

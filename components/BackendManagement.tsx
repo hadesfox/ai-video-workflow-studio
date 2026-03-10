@@ -12,14 +12,11 @@ import {
   Trash2,
   CheckCircle2,
   Save,
-  FilePlus,
   Key,
   Shield,
-  MoreHorizontal,
   X,
   Check,
   AlertTriangle,
-  Lock,
   ChevronRight,
   UserCog,
   Send,
@@ -68,6 +65,7 @@ interface Role {
   id: string;
   name: string;
   permissions: string[];
+  visibility: '全部' | '项目组';
 }
 
 interface Permission {
@@ -158,20 +156,37 @@ const MOCK_CONFIG_LIST: ConfigItem[] = [
 
 const PERMISSIONS_LIST: Permission[] = [
   { id: 'SYS_VIEW', category: '系统', label: '访问后台' },
-  { id: 'SYS_ADMIN', category: '系统', label: '系统设置管理' },
-  { id: 'USER_READ', category: '用户', label: '查看用户列表' },
-  { id: 'USER_WRITE', category: '用户', label: '编辑/新增用户' },
-  { id: 'ROLE_MANAGE', category: '用户', label: '角色权限配置' },
-  { id: 'PROMPT_READ', category: '提示词', label: '查看提示词配置' },
-  { id: 'PROMPT_WRITE', category: '提示词', label: '修改提示词模板' },
-  { id: 'ASSET_MANAGE', category: '业务', label: '资产管理' },
-  { id: 'VIDEO_GEN', category: '业务', label: '视频生成能力' },
+  { id: 'PROJECT_OWNERSHIP', category: '项目', label: '配置项目归属' },
+  { id: 'PROJECT_DELETE', category: '项目', label: '删除项目' },
+  { id: 'USER_WRITE', category: '用户', label: '新增用户' },
+  { id: 'ROLE_MANAGE', category: '用户', label: '配置用户角色' },
 ];
 
 const INITIAL_ROLES: Role[] = [
-  { id: 'ADMIN', name: '管理员 (Admin)', permissions: PERMISSIONS_LIST.map(p => p.id) },
-  { id: 'EDITOR', name: '操作员 (Editor)', permissions: ['SYS_VIEW', 'PROMPT_READ', 'ASSET_MANAGE', 'VIDEO_GEN'] },
-  { id: 'VIEWER', name: '访客 (Viewer)', permissions: ['SYS_VIEW', 'PROMPT_READ'] },
+  { 
+    id: 'ADMIN', 
+    name: '管理员', 
+    permissions: ['SYS_VIEW', 'PROJECT_OWNERSHIP', 'PROJECT_DELETE', 'USER_WRITE', 'ROLE_MANAGE'],
+    visibility: '全部'
+  },
+  { 
+    id: 'EXECUTIVE_DIRECTOR', 
+    name: '总导演', 
+    permissions: ['SYS_VIEW', 'PROJECT_OWNERSHIP', 'PROJECT_DELETE', 'USER_WRITE', 'ROLE_MANAGE'],
+    visibility: '全部'
+  },
+  { 
+    id: 'DIRECTOR', 
+    name: '导演', 
+    permissions: ['PROJECT_OWNERSHIP', 'PROJECT_DELETE', 'USER_WRITE'],
+    visibility: '项目组'
+  },
+  { 
+    id: 'PRODUCTION', 
+    name: '制作', 
+    permissions: [],
+    visibility: '项目组'
+  },
 ];
 
 const INITIAL_GROUPS: ProjectGroup[] = [
@@ -182,8 +197,8 @@ const INITIAL_GROUPS: ProjectGroup[] = [
 
 const INITIAL_USERS: UserAccount[] = [
   { id: 'u1', username: 'Admin', email: 'admin@vidustudio.com', roleId: 'ADMIN', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:00' },
-  { id: 'u2', username: 'Editor01', email: 'editor@vidustudio.com', roleId: 'EDITOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 15:30' },
-  { id: 'u3', username: 'Guest', email: 'guest@vidustudio.com', roleId: 'VIEWER', groupId: 'g2', permissions: [], status: 'INACTIVE', lastLogin: '2023-09-01 09:00' },
+  { id: 'u2', username: 'Editor01', email: 'editor@vidustudio.com', roleId: 'DIRECTOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 15:30' },
+  { id: 'u3', username: 'Guest', email: 'guest@vidustudio.com', roleId: 'PRODUCTION', groupId: 'g2', permissions: [], status: 'INACTIVE', lastLogin: '2023-09-01 09:00' },
 ];
 
 // Pre-configured templates with IDs from MOCK_CONFIG_LIST
@@ -382,12 +397,11 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
 
   // Role Config Drawer
   const [showRoleDrawer, setShowRoleDrawer] = useState(false);
-  const [selectedRoleId, setSelectedRoleId] = useState<string>('ADMIN');
   const [showAddRoleModal, setShowAddRoleModal] = useState(false);
   const [newRoleName, setNewRoleName] = useState('');
 
   // --- Config Mgmt State ---
-  const [configList, setConfigList] = useState<ConfigItem[]>(MOCK_CONFIG_LIST);
+  const [configList] = useState<ConfigItem[]>(MOCK_CONFIG_LIST);
   const [searchConfig, setSearchConfig] = useState('');
 
   // --- Chatbot State ---
@@ -561,17 +575,21 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
     const newRole: Role = {
       id: newId,
       name: newRoleName,
-      permissions: ['SYS_VIEW']
+      permissions: ['SYS_VIEW'],
+      visibility: '项目组'
     };
     setRoles([...roles, newRole]);
-    setSelectedRoleId(newId);
     setShowAddRoleModal(false);
     setNewRoleName('');
   };
 
-  const toggleRolePermission = (permId: string) => {
+  const updateRoleVisibility = (roleId: string, visibility: '全部' | '项目组') => {
+    setRoles(prev => prev.map(r => r.id === roleId ? { ...r, visibility } : r));
+  };
+
+  const toggleRolePermission = (roleId: string, permId: string) => {
     setRoles(prev => prev.map(r => {
-      if (r.id !== selectedRoleId) return r;
+      if (r.id !== roleId) return r;
       const hasPerm = r.permissions.includes(permId);
       return {
         ...r,
@@ -1395,77 +1413,86 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
 
       {/* Role Permission Config Drawer */}
       <div 
-        className={`fixed inset-y-0 right-0 w-[480px] bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 flex flex-col border-l border-slate-200 dark:border-slate-800 ${showRoleDrawer ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed inset-y-0 right-0 w-[900px] bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 flex flex-col border-l border-slate-200 dark:border-slate-800 ${showRoleDrawer ? 'translate-x-0' : 'translate-x-full'}`}
       >
          <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
             <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
                <Shield className="text-blue-500" size={20} />
                角色权限配置
             </h3>
-            <button onClick={() => setShowRoleDrawer(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-               <X size={20} />
-            </button>
-         </div>
-         
-         <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
-            <div className="flex gap-2">
-               <div className="flex-1">
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">选择角色</label>
-                  <select 
-                     value={selectedRoleId}
-                     onChange={(e) => setSelectedRoleId(e.target.value)}
-                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                  >
-                     {roles.map(r => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
-                     ))}
-                  </select>
-               </div>
-               <div className="flex items-end gap-2">
-                  <button 
-                     onClick={() => setShowAddRoleModal(true)}
-                     className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                     title="新增角色"
-                  >
-                     <Plus size={20} />
-                  </button>
-                  <button 
-                     onClick={() => { if(roles.length > 1) { /* Mock Delete */ } }}
-                     className="p-2.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                     title="删除当前角色"
-                  >
-                     <Trash2 size={20} />
-                  </button>
-               </div>
+            <div className="flex items-center gap-3">
+               <button 
+                  onClick={() => setShowAddRoleModal(true)}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+               >
+                  <Plus size={16} /> 新增角色
+               </button>
+               <button onClick={() => setShowRoleDrawer(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <X size={20} />
+               </button>
             </div>
          </div>
-
-         <div className="flex-1 overflow-y-auto p-5 space-y-6">
-            <div>
-               <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4">权限分配 (选中即绑定)</h4>
-               <div className="space-y-3">
-                  {PERMISSIONS_LIST.map((perm) => {
-                     const currentRole = roles.find(r => r.id === selectedRoleId);
-                     const isChecked = currentRole?.permissions.includes(perm.id);
-                     return (
-                        <label key={perm.id} className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
-                           isChecked 
-                              ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-500/50' 
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                        }`}>
-                           <input 
-                              type="checkbox" 
-                              checked={isChecked}
-                              onChange={() => toggleRolePermission(perm.id)}
-                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 bg-gray-100 border-gray-300 dark:bg-gray-700 dark:border-gray-600"
-                           />
-                           <div className="ml-3">
-                              <span className="text-sm font-medium text-slate-900 dark:text-slate-200">{perm.label}</span>
-                              <span className="ml-2 text-xs text-slate-500 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">{perm.category}</span>
-                           </div>
-                        </label>
-                     );
-                  })}
+         
+         <div className="flex-1 overflow-auto p-5">
+            <div className="min-w-[800px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+               <table className="w-full text-sm text-left border-collapse">
+                  <thead>
+                     <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                        <th className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 w-32"></th>
+                        {PERMISSIONS_LIST.map(perm => (
+                           <th key={perm.id} className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 text-center">
+                              {perm.label}
+                           </th>
+                        ))}
+                        <th className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 text-center w-32">可见范围</th>
+                     </tr>
+                  </thead>
+                  <tbody>
+                     {roles.map((role) => (
+                        <tr key={role.id} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                           <td className="px-4 py-4 font-bold text-slate-800 dark:text-slate-200 bg-slate-50/30 dark:bg-slate-800/10">
+                              {role.name}
+                           </td>
+                           {PERMISSIONS_LIST.map(perm => {
+                              const isChecked = role.permissions.includes(perm.id);
+                              return (
+                                 <td key={perm.id} className="px-4 py-4 text-center">
+                                    <div className="flex justify-center">
+                                       <input 
+                                          type="checkbox" 
+                                          checked={isChecked}
+                                          onChange={() => toggleRolePermission(role.id, perm.id)}
+                                          className="w-5 h-5 text-green-500 rounded focus:ring-green-500 bg-gray-100 border-gray-300 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                                       />
+                                    </div>
+                                 </td>
+                              );
+                           })}
+                           <td className="px-4 py-4 text-center">
+                              <select 
+                                 value={role.visibility}
+                                 onChange={(e) => updateRoleVisibility(role.id, e.target.value as '全部' | '项目组')}
+                                 className="bg-transparent border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
+                              >
+                                 <option value="全部">全部</option>
+                                 <option value="项目组">项目组</option>
+                              </select>
+                           </td>
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
+            </div>
+            
+            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50 rounded-lg">
+               <div className="flex gap-3">
+                  <Shield className="text-blue-500 shrink-0" size={20} />
+                  <div>
+                     <h5 className="text-sm font-bold text-blue-900 dark:text-blue-300">权限说明</h5>
+                     <p className="text-xs text-blue-700 dark:text-blue-400 mt-1 leading-relaxed">
+                        勾选即代表该角色拥有对应功能的访问或操作权限。可见范围决定了该角色在业务模块中能看到的数据范围。
+                     </p>
+                  </div>
                </div>
             </div>
          </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Shot, Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab } from '../types';
-import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, Plus, Sparkles, RefreshCw, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, Save, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab } from '../types';
+import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText } from 'lucide-react';
 
 interface StageVideoProps {
   episodes: Episode[];

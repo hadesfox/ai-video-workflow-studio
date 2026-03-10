@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Video, Image as ImageIcon, Music, Upload, RefreshCw, 
-  Sparkles, Clock, Send, Monitor, History, X, Play
+  Sparkles, Clock, Send, Monitor, History, X
 } from 'lucide-react';
 
 interface FormPageProps {
@@ -18,11 +18,20 @@ const FormPage: React.FC<FormPageProps> = ({ onBack }) => {
       <div className="w-1/3 min-w-[400px] flex flex-col gap-4">
         
         {/* Header */}
-        <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-          <div className="p-2 bg-blue-600 rounded-lg">
-            <Video size={20} className="text-white" />
+        <div className="flex items-center justify-between bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600 rounded-lg">
+              <Video size={20} className="text-white" />
+            </div>
+            <h2 className="text-lg font-bold text-white">视频创作工具</h2>
           </div>
-          <h2 className="text-lg font-bold text-white">视频创作工具</h2>
+          <button 
+            onClick={onBack}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            title="返回系统"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* Input Sections Container */}

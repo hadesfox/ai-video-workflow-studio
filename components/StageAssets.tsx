@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Asset } from '../types';
-import { Layers, User, Package, Map, Wand2, RefreshCw, Save } from 'lucide-react';
+import { Layers, User, Map, Wand2, RefreshCw } from 'lucide-react';
 
 interface StageAssetsProps {
   assets: Asset[];

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Asset, AssetState, AssetSubTab, WorldviewEntry } from '../types';
-import { Layers, Wand2, RefreshCw, Mic, Volume2, Sparkles, FileSearch, ImagePlus, User, Map, Box, X, ChevronRight, Check, Search, Settings2, Trash2, CheckSquare, Square, LayoutTemplate, List, AlertCircle, Play, Upload, Plus, Loader2, Globe2, FileText, File, Palette } from 'lucide-react';
+import { Layers, RefreshCw, Mic, Volume2, Sparkles, FileSearch, ImagePlus, User, Map, Box, X, ChevronRight, Check, Search, Settings2, Trash2, CheckSquare, Square, LayoutTemplate, List, Play, Upload, Plus, Loader2, Globe2, FileText, File, Palette } from 'lucide-react';
 
 interface AssetManagementProps {
   assets: Asset[];
@@ -310,9 +310,6 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
 
   // 修改：一键生图 (只针对有 prompt 的状态)
   const handleOneClickGen = () => {
-    // 检查是否有任何状态有prompt但没有图片
-    const hasPendingGeneration = assets.some(a => a.states.some(s => s.prompt && !s.mainImageUrl));
-    
     // 如果没有待生成的（或者第一次生成），我们可能生成所有。
     // 但需求是：再次点击则检查有提示词没图片的资产才生效
     // 如果已经有一些图了，只生成剩余的

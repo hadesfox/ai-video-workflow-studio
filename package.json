@@ -1,7 +1,7 @@
 {
   "name": "ai-video-workflow-studio",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.2.0",
   "type": "module",
   "homepage": "https://hadesfox.github.io/ai-video-workflow-studio",
   "scripts": {
@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -t -d dist"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",

@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Asset, AssetState } from '../types';
-import { Database, ArrowRight, Trash2, Search, CloudUpload, X, Edit2, Save, MoreHorizontal, Image as ImageIcon, Wand2, CheckCircle2, AlertCircle, Sidebar, PanelLeftClose, PanelLeftOpen, FileDiff, RefreshCw, AlertTriangle, ArrowUp, ArrowDown, ArrowRightLeft, Link as LinkIcon, Unlink, Info } from 'lucide-react';
+import { Database, ArrowRight, Trash2, Search, CloudUpload, X, Edit2, Save, MoreHorizontal, Image as ImageIcon, Wand2, CheckCircle2, AlertCircle, PanelLeftClose, PanelLeftOpen, FileDiff, ArrowUp, ArrowDown, ArrowRightLeft, Link as LinkIcon, Unlink, Info } from 'lucide-react';
 
 interface StageMasterLibProps {
   assets: Asset[];
-  setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
-  onNext: () => void;
 }
 
 // 定义主体库条目的独立接口
@@ -20,7 +18,7 @@ interface MasterItem {
   createdAt: number;
 }
 
-const StageMasterLib: React.FC<StageMasterLibProps> = ({ assets, setAssets, onNext }) => {
+const StageMasterLib: React.FC<StageMasterLibProps> = ({ assets }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
