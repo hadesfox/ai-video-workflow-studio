@@ -44,6 +44,7 @@ interface BackendManagementProps {
   users: UserAccount[];
   setUsers: (users: UserAccount[]) => void;
   projects: Project[];
+  setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
 }
 
 // --- Mock Data Types ---
@@ -202,9 +203,29 @@ const INITIAL_GROUPS: ProjectGroup[] = [
 ];
 
 const INITIAL_USERS: UserAccount[] = [
-  { id: 'u1', username: 'Admin', email: 'admin@vidustudio.com', roleId: 'ADMIN', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:00' },
-  { id: 'u2', username: 'Editor01', email: 'editor@vidustudio.com', roleId: 'DIRECTOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 15:30' },
-  { id: 'u3', username: 'Guest', email: 'guest@vidustudio.com', roleId: 'PRODUCTION', groupId: 'g2', permissions: [], status: 'INACTIVE', lastLogin: '2023-09-01 09:00' },
+  { id: 'u1', username: 'Admin', realName: '超级管理员', email: 'admin@vidustudio.com', roleId: 'ADMIN', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:00' },
+  { id: 'u2', username: 'Editor01', realName: '张三', email: 'editor@vidustudio.com', roleId: 'DIRECTOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 15:30' },
+  { id: 'u3', username: 'Guest', realName: '李四', email: 'guest@vidustudio.com', roleId: 'PRODUCTION', groupId: 'g2', permissions: [], status: 'INACTIVE', lastLogin: '2023-09-01 09:00' },
+  { id: 'u4', username: 'Designer01', realName: '王五', email: 'designer01@vidustudio.com', roleId: 'DESIGNER', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:15' },
+  { id: 'u5', username: 'Designer02', realName: '赵六', email: 'designer02@vidustudio.com', roleId: 'DESIGNER', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 08:45' },
+  { id: 'u6', username: 'Designer03', realName: '钱七', email: 'designer03@vidustudio.com', roleId: 'DESIGNER', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 18:20' },
+  { id: 'u7', username: 'Dev01', realName: '孙八', email: 'dev01@vidustudio.com', roleId: 'DEVELOPER', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 11:00' },
+  { id: 'u8', username: 'Dev02', realName: '周九', email: 'dev02@vidustudio.com', roleId: 'DEVELOPER', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:30' },
+  { id: 'u9', username: 'PM01', realName: '吴十', email: 'pm01@vidustudio.com', roleId: 'PM', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:00' },
+  { id: 'u10', username: 'QA01', realName: '郑十一', email: 'qa01@vidustudio.com', roleId: 'QA', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:30' },
+  { id: 'u11', username: 'Marketing01', realName: '王十二', email: 'marketing01@vidustudio.com', roleId: 'MARKETING', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 14:00' },
+  { id: 'u12', username: 'Sales01', realName: '李十三', email: 'sales01@vidustudio.com', roleId: 'SALES', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-25 10:00' },
+  { id: 'u13', username: 'HR01', realName: '张十四', email: 'hr01@vidustudio.com', roleId: 'HR', groupId: '', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 08:30' },
+  { id: 'u14', username: 'Finance01', realName: '刘十五', email: 'finance01@vidustudio.com', roleId: 'FINANCE', groupId: '', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:45' },
+  { id: 'u15', username: 'Support01', realName: '陈十六', email: 'support01@vidustudio.com', roleId: 'SUPPORT', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:15' },
+  { id: 'u16', username: 'Editor02', realName: '杨十七', email: 'editor02@vidustudio.com', roleId: 'DIRECTOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 16:00' },
+  { id: 'u17', username: 'Designer04', realName: '黄十八', email: 'designer04@vidustudio.com', roleId: 'DESIGNER', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:20' },
+  { id: 'u18', username: 'Dev03', realName: '林十九', email: 'dev03@vidustudio.com', roleId: 'DEVELOPER', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:45' },
+  { id: 'u19', username: 'PM02', realName: '何二十', email: 'pm02@vidustudio.com', roleId: 'PM', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:10' },
+  { id: 'u20', username: 'QA02', realName: '高二十一', email: 'qa02@vidustudio.com', roleId: 'QA', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:40' },
+  { id: 'u21', username: 'Marketing02', realName: '郭二十二', email: 'marketing02@vidustudio.com', roleId: 'MARKETING', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 14:30' },
+  { id: 'u22', username: 'Sales02', realName: '马二十三', email: 'sales02@vidustudio.com', roleId: 'SALES', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-25 10:30' },
+  { id: 'u23', username: 'Support02', realName: '罗二十四', email: 'support02@vidustudio.com', roleId: 'SUPPORT', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:20' },
 ];
 
 // Pre-configured templates with IDs from MOCK_CONFIG_LIST
@@ -376,7 +397,7 @@ const SearchableConfigDropdown: React.FC<SearchableConfigDropdownProps> = ({ opt
 };
 
 
-const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, setGroups, users, setUsers, projects }) => {
+const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, setGroups, users, setUsers, projects, setProjects }) => {
   const [activeTab, setActiveTab] = useState('TYPE_MGMT');
 
   // --- Template State ---
@@ -398,7 +419,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
   // Group Details Modal
   const [showGroupDetailModal, setShowGroupDetailModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<ProjectGroup | null>(null);
-  const [showAddMemberPanel, setShowAddMemberPanel] = useState(false);
+  const [activeRightPanel, setActiveRightPanel] = useState<'members' | 'projects' | null>(null);
   
   // User Permissions Drawer
   const [showUserPermDrawer, setShowUserPermDrawer] = useState(false);
@@ -522,16 +543,18 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const username = formData.get('username') as string;
+    const realName = formData.get('realName') as string;
     const email = formData.get('email') as string;
     const roleId = formData.get('roleId') as string;
     const groupId = formData.get('groupId') as string;
     
     if (editingUser) {
-      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, username, email, roleId, groupId } : u));
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, username, realName, email, roleId, groupId } : u));
     } else {
       const newUser: UserAccount = {
         id: `u_${Date.now()}`,
         username,
+        realName,
         email,
         roleId,
         groupId,
@@ -547,6 +570,10 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
 
   const handleUserGroupChange = (userId: string, groupId?: string) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, groupId } : u));
+  };
+
+  const handleProjectGroupChange = (projectId: string, groupId?: string) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, groupId } : p));
   };
 
   const handleAddGroup = () => {
@@ -1044,8 +1071,9 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                   </div>
 
                   <div className="w-full overflow-x-auto">
-                     <div className="min-w-[1000px] grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        <div className="col-span-3">用户信息</div>
+                     <div className="min-w-[1100px] grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        <div className="col-span-2">用户信息</div>
+                        <div className="col-span-1">真实姓名</div>
                         <div className="col-span-2">角色 (Role)</div>
                         <div className="col-span-2">项目组 (Group)</div>
                         <div className="col-span-2">权限预览</div>
@@ -1060,15 +1088,18 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                         const effectivePerms = getUserPermissions(user);
 
                         return (
-                        <div key={user.id} className="min-w-[1000px] grid grid-cols-12 gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors items-center text-sm text-slate-700 dark:text-slate-300">
-                           <div className="col-span-3 flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300">
+                        <div key={user.id} className="min-w-[1100px] grid grid-cols-12 gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors items-center text-sm text-slate-700 dark:text-slate-300">
+                           <div className="col-span-2 flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
                                  {user.username.charAt(0).toUpperCase()}
                               </div>
-                              <div className="flex flex-col">
-                                 <span className="font-medium text-slate-900 dark:text-white">{user.username}</span>
-                                 <span className="text-xs text-slate-500">{user.email}</span>
+                              <div className="flex flex-col overflow-hidden">
+                                 <span className="font-medium text-slate-900 dark:text-white truncate">{user.username}</span>
+                                 <span className="text-xs text-slate-500 truncate">{user.email}</span>
                               </div>
+                           </div>
+                           <div className="col-span-1 text-slate-600 dark:text-slate-400 truncate">
+                              {user.realName || '-'}
                            </div>
                            <div className="col-span-2">
                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${
@@ -1418,6 +1449,15 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                      />
                   </div>
                   <div>
+                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-1">真实姓名</label>
+                     <input 
+                        name="realName"
+                        defaultValue={editingUser?.realName}
+                        required
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:border-blue-500 text-slate-900 dark:text-white"
+                     />
+                  </div>
+                  <div>
                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-1">邮箱</label>
                      <input 
                         name="email"
@@ -1493,19 +1533,19 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
       {/* Group Detail Modal */}
       {showGroupDetailModal && selectedGroup && (
          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-4">
-            <div className={`bg-white dark:bg-slate-900 w-full ${showAddMemberPanel ? 'max-w-5xl' : 'max-w-2xl'} rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in flex flex-col max-h-[80vh] transition-all duration-300`}>
+            <div className={`bg-white dark:bg-slate-900 w-full ${activeRightPanel ? 'max-w-5xl' : 'max-w-2xl'} rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in flex flex-col max-h-[80vh] transition-all duration-300`}>
                <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
                   <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                      <FolderOpen size={20} className="text-emerald-500" />
                      {selectedGroup.name} - 详情
                   </h3>
-                  <button onClick={() => { setShowGroupDetailModal(false); setShowAddMemberPanel(false); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                  <button onClick={() => { setShowGroupDetailModal(false); setActiveRightPanel(null); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
                      <X size={20} />
                   </button>
                </div>
                
                <div className="flex flex-1 overflow-hidden">
-                  <div className={`p-6 overflow-y-auto space-y-6 ${showAddMemberPanel ? 'w-1/2 border-r border-slate-200 dark:border-slate-800' : 'w-full'}`}>
+                  <div className={`p-6 overflow-y-auto space-y-6 ${activeRightPanel ? 'w-1/2 border-r border-slate-200 dark:border-slate-800' : 'w-full'}`}>
                      {/* Members Section */}
                      <div>
                         <div className="flex justify-between items-center mb-3">
@@ -1514,7 +1554,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                               组员列表 ({users.filter(u => u.groupId === selectedGroup.id).length})
                            </h4>
                            <button 
-                              onClick={() => setShowAddMemberPanel(!showAddMemberPanel)}
+                              onClick={() => setActiveRightPanel(activeRightPanel === 'members' ? null : 'members')}
                               className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
                            >
                               <Plus size={14} /> 添加组员
@@ -1522,22 +1562,14 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
                            {users.filter(u => u.groupId === selectedGroup.id).length > 0 ? (
-                              <div className={`grid ${showAddMemberPanel ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3'} gap-3`}>
+                              <div className="flex flex-wrap gap-2">
                                  {users.filter(u => u.groupId === selectedGroup.id).map(u => (
-                                    <div key={u.id} className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 group">
-                                       <div className="flex items-center gap-2 overflow-hidden">
-                                          <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xs font-bold shrink-0">
-                                             {u.username.charAt(0).toUpperCase()}
-                                          </div>
-                                          <div className="flex flex-col overflow-hidden">
-                                             <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{u.username}</span>
-                                             <span className="text-xs text-slate-500 truncate">{u.email}</span>
-                                          </div>
-                                       </div>
-                                       {showAddMemberPanel && (
+                                    <div key={u.id} className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-700 group">
+                                       <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{u.realName || u.username}</span>
+                                       {activeRightPanel === 'members' && (
                                           <button 
                                              onClick={() => handleUserGroupChange(u.id, undefined)}
-                                             className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded shrink-0"
+                                             className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full shrink-0"
                                              title="移除组员"
                                           >
                                              <X size={14} />
@@ -1554,24 +1586,43 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
 
                      {/* Projects Section */}
                      <div>
-                        <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
-                           <FileText size={16} className="text-emerald-500" />
-                           承接项目 ({projects.filter(p => p.groupId === selectedGroup.id).length})
-                        </h4>
+                        <div className="flex justify-between items-center mb-3">
+                           <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                              <FileText size={16} className="text-emerald-500" />
+                              承接项目 ({projects.filter(p => p.groupId === selectedGroup.id).length})
+                           </h4>
+                           <button 
+                              onClick={() => setActiveRightPanel(activeRightPanel === 'projects' ? null : 'projects')}
+                              className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1"
+                           >
+                              <Plus size={14} /> 添加项目
+                           </button>
+                        </div>
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
                            {projects.filter(p => p.groupId === selectedGroup.id).length > 0 ? (
                               <div className="space-y-2">
                                  {projects.filter(p => p.groupId === selectedGroup.id).map(p => (
-                                    <div key={p.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+                                    <div key={p.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 group">
                                        <div className="flex items-center gap-3">
                                           <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500">
                                              <FolderOpen size={16} />
                                           </div>
                                           <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{p.name}</span>
                                        </div>
-                                       <span className="text-xs text-slate-500">
-                                          {p.createdAt.toLocaleDateString()}
-                                       </span>
+                                       <div className="flex items-center gap-3">
+                                          <span className="text-xs text-slate-500">
+                                             {p.createdAt.toLocaleDateString()}
+                                          </span>
+                                          {activeRightPanel === 'projects' && (
+                                             <button 
+                                                onClick={() => handleProjectGroupChange(p.id, undefined)}
+                                                className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded shrink-0"
+                                                title="移除项目"
+                                             >
+                                                <X size={14} />
+                                             </button>
+                                          )}
+                                       </div>
                                     </div>
                                  ))}
                               </div>
@@ -1582,39 +1633,61 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                      </div>
                   </div>
 
-                  {/* Right Panel for Adding Members */}
-                  {showAddMemberPanel && (
+                  {/* Right Panel for Adding Members or Projects */}
+                  {activeRightPanel && (
                      <div className="w-1/2 p-6 overflow-y-auto bg-slate-50/50 dark:bg-slate-900/50">
-                        <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
-                           <UserPlus size={16} className="text-indigo-500" />
-                           选择用户添加
-                        </h4>
-                        <div className="space-y-2">
-                           {users.filter(u => u.groupId !== selectedGroup.id).length > 0 ? (
-                              users.filter(u => u.groupId !== selectedGroup.id).map(u => (
-                                 <div 
-                                    key={u.id} 
-                                    className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors cursor-pointer group" 
-                                    onClick={() => handleUserGroupChange(u.id, selectedGroup.id)}
-                                 >
-                                    <div className="flex items-center gap-3 overflow-hidden">
-                                       <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-sm font-bold shrink-0">
-                                          {u.username.charAt(0).toUpperCase()}
+                        {activeRightPanel === 'members' && (
+                           <>
+                              <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
+                                 <UserPlus size={16} className="text-indigo-500" />
+                                 选择用户添加
+                              </h4>
+                              <div className="flex flex-col">
+                                 {users.filter(u => u.groupId !== selectedGroup.id).length > 0 ? (
+                                    users.filter(u => u.groupId !== selectedGroup.id).map(u => (
+                                       <div 
+                                          key={u.id} 
+                                          className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-2" 
+                                          onClick={() => handleUserGroupChange(u.id, selectedGroup.id)}
+                                       >
+                                          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{u.realName || u.username}</span>
+                                          <div className="text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                             <Plus size={18} />
+                                          </div>
                                        </div>
-                                       <div className="flex flex-col overflow-hidden">
-                                          <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{u.username}</span>
-                                          <span className="text-xs text-slate-500 truncate">{u.email}</span>
+                                    ))
+                                 ) : (
+                                    <p className="text-sm text-slate-500 italic text-center py-8">没有可添加的用户</p>
+                                 )}
+                              </div>
+                           </>
+                        )}
+                        {activeRightPanel === 'projects' && (
+                           <>
+                              <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
+                                 <FileText size={16} className="text-emerald-500" />
+                                 选择项目添加
+                              </h4>
+                              <div className="flex flex-col">
+                                 {projects.filter(p => p.groupId !== selectedGroup.id).length > 0 ? (
+                                    projects.filter(p => p.groupId !== selectedGroup.id).map(p => (
+                                       <div 
+                                          key={p.id} 
+                                          className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-2" 
+                                          onClick={() => handleProjectGroupChange(p.id, selectedGroup.id)}
+                                       >
+                                          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{p.name}</span>
+                                          <div className="text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                             <Plus size={18} />
+                                          </div>
                                        </div>
-                                    </div>
-                                    <div className="text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                                       <Plus size={18} />
-                                    </div>
-                                 </div>
-                              ))
-                           ) : (
-                              <p className="text-sm text-slate-500 italic text-center py-8">没有可添加的用户</p>
-                           )}
-                        </div>
+                                    ))
+                                 ) : (
+                                    <p className="text-sm text-slate-500 italic text-center py-8">没有可添加的项目</p>
+                                 )}
+                              </div>
+                           </>
+                        )}
                      </div>
                   )}
                </div>

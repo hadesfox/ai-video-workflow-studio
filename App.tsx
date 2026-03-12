@@ -168,14 +168,37 @@ const App: React.FC = () => {
     { id: 'g3', name: '开发组' },
   ]);
   const [users, setUsers] = useState<UserAccount[]>([
-    { id: 'u1', username: 'Admin', email: 'admin@vidustudio.com', roleId: 'ADMIN', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:00' },
-    { id: 'u2', username: 'Editor01', email: 'editor@vidustudio.com', roleId: 'DIRECTOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 15:30' },
-    { id: 'u3', username: 'Guest', email: 'guest@vidustudio.com', roleId: 'PRODUCTION', groupId: 'g2', permissions: [], status: 'INACTIVE', lastLogin: '2023-09-01 09:00' },
+    { id: 'u1', username: 'Admin', realName: '超级管理员', email: 'admin@vidustudio.com', roleId: 'ADMIN', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:00' },
+    { id: 'u2', username: 'Editor01', realName: '张三', email: 'editor@vidustudio.com', roleId: 'DIRECTOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 15:30' },
+    { id: 'u3', username: 'Guest', realName: '李四', email: 'guest@vidustudio.com', roleId: 'PRODUCTION', groupId: 'g2', permissions: [], status: 'INACTIVE', lastLogin: '2023-09-01 09:00' },
+    { id: 'u4', username: 'Designer01', realName: '王五', email: 'designer01@vidustudio.com', roleId: 'DESIGNER', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:15' },
+    { id: 'u5', username: 'Designer02', realName: '赵六', email: 'designer02@vidustudio.com', roleId: 'DESIGNER', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 08:45' },
+    { id: 'u6', username: 'Designer03', realName: '钱七', email: 'designer03@vidustudio.com', roleId: 'DESIGNER', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 18:20' },
+    { id: 'u7', username: 'Dev01', realName: '孙八', email: 'dev01@vidustudio.com', roleId: 'DEVELOPER', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 11:00' },
+    { id: 'u8', username: 'Dev02', realName: '周九', email: 'dev02@vidustudio.com', roleId: 'DEVELOPER', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:30' },
+    { id: 'u9', username: 'PM01', realName: '吴十', email: 'pm01@vidustudio.com', roleId: 'PM', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:00' },
+    { id: 'u10', username: 'QA01', realName: '郑十一', email: 'qa01@vidustudio.com', roleId: 'QA', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:30' },
+    { id: 'u11', username: 'Marketing01', realName: '王十二', email: 'marketing01@vidustudio.com', roleId: 'MARKETING', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 14:00' },
+    { id: 'u12', username: 'Sales01', realName: '李十三', email: 'sales01@vidustudio.com', roleId: 'SALES', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-25 10:00' },
+    { id: 'u13', username: 'HR01', realName: '张十四', email: 'hr01@vidustudio.com', roleId: 'HR', groupId: '', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 08:30' },
+    { id: 'u14', username: 'Finance01', realName: '刘十五', email: 'finance01@vidustudio.com', roleId: 'FINANCE', groupId: '', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:45' },
+    { id: 'u15', username: 'Support01', realName: '陈十六', email: 'support01@vidustudio.com', roleId: 'SUPPORT', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:15' },
+    { id: 'u16', username: 'Editor02', realName: '杨十七', email: 'editor02@vidustudio.com', roleId: 'DIRECTOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 16:00' },
+    { id: 'u17', username: 'Designer04', realName: '黄十八', email: 'designer04@vidustudio.com', roleId: 'DESIGNER', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:20' },
+    { id: 'u18', username: 'Dev03', realName: '林十九', email: 'dev03@vidustudio.com', roleId: 'DEVELOPER', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:45' },
+    { id: 'u19', username: 'PM02', realName: '何二十', email: 'pm02@vidustudio.com', roleId: 'PM', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:10' },
+    { id: 'u20', username: 'QA02', realName: '高二十一', email: 'qa02@vidustudio.com', roleId: 'QA', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:40' },
+    { id: 'u21', username: 'Marketing02', realName: '郭二十二', email: 'marketing02@vidustudio.com', roleId: 'MARKETING', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 14:30' },
+    { id: 'u22', username: 'Sales02', realName: '马二十三', email: 'sales02@vidustudio.com', roleId: 'SALES', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-25 10:30' },
+    { id: 'u23', username: 'Support02', realName: '罗二十四', email: 'support02@vidustudio.com', roleId: 'SUPPORT', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:20' },
   ]);
   const [projects, setProjects] = useState<Project[]>([
     { id: '1', name: '赛博朋克诺瓦 v1', groupId: 'g1', scriptType: 'NARRATIVE', scriptContent: '在一个被霓虹灯淹没的城市里，侦探Kael醒来，发现自己丢失了昨晚的记忆。窗外，巨大的全息广告牌正在播放着Tyrell公司的最新义体广告...', createdAt: new Date('2023-10-01'), lastModified: new Date('2023-10-25') },
     { id: '2', name: '火星救援行动', groupId: 'g2', scriptType: 'PLOT', scriptContent: '第一幕：飞船坠毁。第二幕：寻找水源。第三幕：发现外星遗迹。', createdAt: new Date('2023-09-15'), lastModified: new Date('2023-09-20') },
     { id: '3', name: '魔法学院日常', groupId: 'g1', scriptType: 'NARRATIVE', scriptContent: '艾米丽挥舞着魔杖，但是什么也没发生。教授叹了口气。', createdAt: new Date('2023-08-10'), lastModified: new Date('2023-08-12') },
+    { id: '4', name: '深海探秘纪录片', groupId: 'g3', scriptType: 'PLOT', scriptContent: '探索马里亚纳海沟的未知生物。深海潜水器下潜，发现发光水母群。', createdAt: new Date('2023-10-10'), lastModified: new Date('2023-10-26') },
+    { id: '5', name: '未来城市宣传片', groupId: 'g1', scriptType: 'NARRATIVE', scriptContent: '穿梭在云端的飞行汽车，绿意盎然的空中花园。展示2050年的城市生活愿景。', createdAt: new Date('2023-10-15'), lastModified: new Date('2023-10-27') },
+    { id: '6', name: '古风武侠短剧', groupId: 'g2', scriptType: 'NARRATIVE', scriptContent: '竹林深处，两名剑客相对而立。落叶飘零，剑光一闪。', createdAt: new Date('2023-10-20'), lastModified: new Date('2023-10-27') },
   ]);
 
   // Usage Stats State
@@ -394,6 +417,7 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
         users={users}
         setUsers={setUsers}
         projects={projects}
+        setProjects={setProjects}
       />
     );
   }

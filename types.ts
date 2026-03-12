@@ -33,6 +33,7 @@ export interface ProjectGroup {
 export interface UserAccount {
   id: string;
   username: string;
+  realName: string;
   email: string;
   roleId: string;
   groupId?: string;
