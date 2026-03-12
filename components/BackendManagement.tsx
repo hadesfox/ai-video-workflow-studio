@@ -420,6 +420,8 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
   const [showGroupDetailModal, setShowGroupDetailModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<ProjectGroup | null>(null);
   const [activeRightPanel, setActiveRightPanel] = useState<'members' | 'projects' | null>(null);
+  const [stagedGroupUsers, setStagedGroupUsers] = useState<string[]>([]);
+  const [stagedGroupProjects, setStagedGroupProjects] = useState<string[]>([]);
   
   // User Permissions Drawer
   const [showUserPermDrawer, setShowUserPermDrawer] = useState(false);
@@ -574,6 +576,33 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
 
   const handleProjectGroupChange = (projectId: string, groupId?: string) => {
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, groupId } : p));
+  };
+
+  const handleConfirmGroupChanges = () => {
+    if (!selectedGroup) return;
+    
+    setUsers(prev => prev.map(u => {
+      if (stagedGroupUsers.includes(u.id)) {
+        return { ...u, groupId: selectedGroup.id };
+      }
+      if (u.groupId === selectedGroup.id && !stagedGroupUsers.includes(u.id)) {
+        return { ...u, groupId: undefined };
+      }
+      return u;
+    }));
+
+    setProjects(prev => prev.map(p => {
+      if (stagedGroupProjects.includes(p.id)) {
+        return { ...p, groupId: selectedGroup.id };
+      }
+      if (p.groupId === selectedGroup.id && !stagedGroupProjects.includes(p.id)) {
+        return { ...p, groupId: undefined };
+      }
+      return p;
+    }));
+
+    setShowGroupDetailModal(false);
+    setActiveRightPanel(null);
   };
 
   const handleAddGroup = () => {
@@ -1230,6 +1259,8 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                                    <button 
                                       onClick={() => {
                                         setSelectedGroup(group);
+                                        setStagedGroupUsers(users.filter(u => u.groupId === group.id).map(u => u.id));
+                                        setStagedGroupProjects(projects.filter(p => p.groupId === group.id).map(p => p.id));
                                         setShowGroupDetailModal(true);
                                       }}
                                       className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
@@ -1551,7 +1582,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                         <div className="flex justify-between items-center mb-3">
                            <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                               <Users size={16} className="text-blue-500" />
-                              组员列表 ({users.filter(u => u.groupId === selectedGroup.id).length})
+                              组员列表 ({users.filter(u => stagedGroupUsers.includes(u.id)).length})
                            </h4>
                            <button 
                               onClick={() => setActiveRightPanel(activeRightPanel === 'members' ? null : 'members')}
@@ -1561,14 +1592,14 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                            </button>
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
-                           {users.filter(u => u.groupId === selectedGroup.id).length > 0 ? (
+                           {users.filter(u => stagedGroupUsers.includes(u.id)).length > 0 ? (
                               <div className="flex flex-wrap gap-2">
-                                 {users.filter(u => u.groupId === selectedGroup.id).map(u => (
+                                 {users.filter(u => stagedGroupUsers.includes(u.id)).map(u => (
                                     <div key={u.id} className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-700 group">
                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{u.realName || u.username}</span>
                                        {activeRightPanel === 'members' && (
                                           <button 
-                                             onClick={() => handleUserGroupChange(u.id, undefined)}
+                                             onClick={() => setStagedGroupUsers(prev => prev.filter(id => id !== u.id))}
                                              className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full shrink-0"
                                              title="移除组员"
                                           >
@@ -1589,7 +1620,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                         <div className="flex justify-between items-center mb-3">
                            <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                               <FileText size={16} className="text-emerald-500" />
-                              承接项目 ({projects.filter(p => p.groupId === selectedGroup.id).length})
+                              承接项目 ({projects.filter(p => stagedGroupProjects.includes(p.id)).length})
                            </h4>
                            <button 
                               onClick={() => setActiveRightPanel(activeRightPanel === 'projects' ? null : 'projects')}
@@ -1599,9 +1630,9 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                            </button>
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
-                           {projects.filter(p => p.groupId === selectedGroup.id).length > 0 ? (
+                           {projects.filter(p => stagedGroupProjects.includes(p.id)).length > 0 ? (
                               <div className="space-y-2">
-                                 {projects.filter(p => p.groupId === selectedGroup.id).map(p => (
+                                 {projects.filter(p => stagedGroupProjects.includes(p.id)).map(p => (
                                     <div key={p.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 group">
                                        <div className="flex items-center gap-3">
                                           <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500">
@@ -1615,7 +1646,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                                           </span>
                                           {activeRightPanel === 'projects' && (
                                              <button 
-                                                onClick={() => handleProjectGroupChange(p.id, undefined)}
+                                                onClick={() => setStagedGroupProjects(prev => prev.filter(id => id !== p.id))}
                                                 className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded shrink-0"
                                                 title="移除项目"
                                              >
@@ -1643,12 +1674,12 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                                  选择用户添加
                               </h4>
                               <div className="flex flex-col">
-                                 {users.filter(u => u.groupId !== selectedGroup.id).length > 0 ? (
-                                    users.filter(u => u.groupId !== selectedGroup.id).map(u => (
+                                 {users.filter(u => !stagedGroupUsers.includes(u.id)).length > 0 ? (
+                                    users.filter(u => !stagedGroupUsers.includes(u.id)).map(u => (
                                        <div 
                                           key={u.id} 
                                           className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-2" 
-                                          onClick={() => handleUserGroupChange(u.id, selectedGroup.id)}
+                                          onClick={() => setStagedGroupUsers(prev => [...prev, u.id])}
                                        >
                                           <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{u.realName || u.username}</span>
                                           <div className="text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1669,12 +1700,12 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                                  选择项目添加
                               </h4>
                               <div className="flex flex-col">
-                                 {projects.filter(p => p.groupId !== selectedGroup.id).length > 0 ? (
-                                    projects.filter(p => p.groupId !== selectedGroup.id).map(p => (
+                                 {projects.filter(p => !stagedGroupProjects.includes(p.id)).length > 0 ? (
+                                    projects.filter(p => !stagedGroupProjects.includes(p.id)).map(p => (
                                        <div 
                                           key={p.id} 
                                           className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group px-2" 
-                                          onClick={() => handleProjectGroupChange(p.id, selectedGroup.id)}
+                                          onClick={() => setStagedGroupProjects(prev => [...prev, p.id])}
                                        >
                                           <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{p.name}</span>
                                           <div className="text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1690,6 +1721,22 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                         )}
                      </div>
                   )}
+               </div>
+               
+               {/* Modal Footer */}
+               <div className="p-5 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3 shrink-0 bg-slate-50 dark:bg-slate-900/80 rounded-b-xl">
+                  <button 
+                     onClick={() => { setShowGroupDetailModal(false); setActiveRightPanel(null); }}
+                     className="px-4 py-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors"
+                  >
+                     取消
+                  </button>
+                  <button 
+                     onClick={handleConfirmGroupChanges}
+                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors font-medium shadow-sm shadow-emerald-500/20"
+                  >
+                     确定
+                  </button>
                </div>
             </div>
          </div>
