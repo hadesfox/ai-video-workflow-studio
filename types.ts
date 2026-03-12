@@ -45,7 +45,6 @@ export interface Role {
   id: string;
   name: string;
   permissions: string[];
-  visibility: '全部' | '项目组';
 }
 
 export interface Project {
