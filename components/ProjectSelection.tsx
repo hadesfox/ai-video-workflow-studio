@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Project } from '../types';
+import { Project, ProjectGroup } from '../types';
 import { Plus, FolderOpen, Clock, FileText, ArrowRight, Edit2, Trash2, X, Sparkles, BookOpen, Mic, CheckCircle2, ArrowRightLeft, Film, UploadCloud, File as FileIcon, Eye, Check, AlignLeft, Settings } from 'lucide-react';
 
 interface ProjectSelectionProps {
@@ -7,9 +7,12 @@ interface ProjectSelectionProps {
   setProject: (p: Project) => void;
   onProjectSelected: () => void;
   onOpenSettings: () => void;
+  projects: Project[];
+  setProjects: (projects: Project[]) => void;
+  groups: ProjectGroup[];
 }
 
-const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, setProject, onProjectSelected, onOpenSettings }) => {
+const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, setProject, onProjectSelected, onOpenSettings, projects, setProjects, groups }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSettingsCheck, setShowSettingsCheck] = useState(false); // New Check Modal
   
@@ -18,6 +21,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
   
   const [scriptType, setScriptType] = useState<'COMMENTARY' | 'PLOT'>('COMMENTARY'); // Default Commentary
   const [isUploadedScript, setIsUploadedScript] = useState<boolean>(true); // Only for Commentary
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(''); // New Group Selection
   
   // Conversion / Analysis States
   const [isConverting, setIsConverting] = useState(false);
@@ -25,13 +29,6 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
   const [showPreviewModal, setShowPreviewModal] = useState(false); // For script reader
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Local Project List
-  const [projects, setProjects] = useState<Project[]>([
-    { id: '1', name: '赛博朋克诺瓦 v1', scriptType: 'NARRATIVE', scriptContent: '在一个被霓虹灯淹没的城市里，侦探Kael醒来，发现自己丢失了昨晚的记忆。窗外，巨大的全息广告牌正在播放着Tyrell公司的最新义体广告...', createdAt: new Date('2023-10-01'), lastModified: new Date('2023-10-25') },
-    { id: '2', name: '火星救援行动', scriptType: 'PLOT', scriptContent: '第一幕：飞船坠毁。第二幕：寻找水源。第三幕：发现外星遗迹。', createdAt: new Date('2023-09-15'), lastModified: new Date('2023-09-20') },
-    { id: '3', name: '魔法学院日常', scriptType: 'NARRATIVE', scriptContent: '艾米丽挥舞着魔杖，但是什么也没发生。教授叹了口气。', createdAt: new Date('2023-08-10'), lastModified: new Date('2023-08-12') },
-  ]);
 
   // Editing State
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -56,6 +53,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
     const newProject: Project = {
       id: Date.now().toString(),
       name: `新项目 ${new Date().toLocaleDateString()}`,
+      groupId: selectedGroupId || undefined,
       scriptType: scriptType === 'COMMENTARY' ? 'COMMENTARY' : 'NARRATIVE', 
       scriptContent: finalContent,
       createdAt: new Date(),
@@ -156,6 +154,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
      setConvertedScript(null);
      setIsConverting(false);
      setShowPreviewModal(false);
+     setSelectedGroupId('');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -325,6 +324,23 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
               {/* Modal Content */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                  
+                 {/* 0. Group Selection */}
+                 <div className="space-y-3">
+                    <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                       <FolderOpen size={16} className="text-blue-500"/> 所属项目组
+                    </label>
+                    <select 
+                       value={selectedGroupId}
+                       onChange={(e) => setSelectedGroupId(e.target.value)}
+                       className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                    >
+                       <option value="">无 (个人项目)</option>
+                       {groups.map(g => (
+                          <option key={g.id} value={g.id}>{g.name}</option>
+                       ))}
+                    </select>
+                 </div>
+
                  {/* 1. Script Input - FILE UPLOAD REPLACEMENT */}
                  <div className="space-y-3">
                     <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
@@ -550,6 +566,19 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ currentProject, set
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:border-blue-500 focus:outline-none"
                   autoFocus
                 />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">所属项目组</label>
+                <select 
+                  value={editingProject.groupId || ''}
+                  onChange={(e) => setEditingProject({...editingProject, groupId: e.target.value || undefined})}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="">无 (个人项目)</option>
+                  {groups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-800">

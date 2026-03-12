@@ -25,9 +25,33 @@ export enum VideoSubTab {
   SEEDANCE = 'SEEDANCE'
 }
 
+export interface ProjectGroup {
+  id: string;
+  name: string;
+}
+
+export interface UserAccount {
+  id: string;
+  username: string;
+  email: string;
+  roleId: string;
+  groupId?: string;
+  permissions: string[];
+  status: 'ACTIVE' | 'INACTIVE';
+  lastLogin: string;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  permissions: string[];
+  visibility: '全部' | '项目组';
+}
+
 export interface Project {
   id: string;
   name: string;
+  groupId?: string;
   scriptType: 'NARRATIVE' | 'PLOT' | 'COMMENTARY';
   scriptContent: string;
   createdAt: Date;

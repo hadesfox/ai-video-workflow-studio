@@ -29,11 +29,20 @@ import {
   List,
   BarChart3,
   Calendar,
-  ArrowDownUp
+  ArrowDownUp,
+  Eye,
+  FolderOpen
 } from 'lucide-react';
+
+import { Project, ProjectGroup, UserAccount, Role } from '../types';
 
 interface BackendManagementProps {
   onExit: () => void;
+  groups: ProjectGroup[];
+  setGroups: (groups: ProjectGroup[]) => void;
+  users: UserAccount[];
+  setUsers: (users: UserAccount[]) => void;
+  projects: Project[];
 }
 
 // --- Mock Data Types ---
@@ -43,29 +52,6 @@ interface TemplateConfig {
   name: string;
   description: string;
   settings: Record<string, { model: string; promptId: string }>;
-}
-
-interface UserAccount {
-  id: string;
-  username: string;
-  email: string;
-  roleId: string;
-  groupId?: string;
-  permissions: string[]; // Extra specific permissions
-  status: 'ACTIVE' | 'INACTIVE';
-  lastLogin: string;
-}
-
-interface ProjectGroup {
-  id: string;
-  name: string;
-}
-
-interface Role {
-  id: string;
-  name: string;
-  permissions: string[];
-  visibility: '全部' | '项目组';
 }
 
 interface Permission {
@@ -155,36 +141,59 @@ const MOCK_CONFIG_LIST: ConfigItem[] = [
 ];
 
 const PERMISSIONS_LIST: Permission[] = [
-  { id: 'SYS_VIEW', category: '系统', label: '访问后台' },
-  { id: 'PROJECT_OWNERSHIP', category: '项目', label: '配置项目归属' },
-  { id: 'PROJECT_DELETE', category: '项目', label: '删除项目' },
-  { id: 'USER_WRITE', category: '用户', label: '新增用户' },
-  { id: 'ROLE_MANAGE', category: '用户', label: '配置用户角色' },
+  // 前台配置
+  { id: 'FRONT_PROJECT_CREATE', category: '前台配置', label: '创建项目' },
+  { id: 'FRONT_PROJECT_RENAME', category: '前台配置', label: '修改项目名' },
+  { id: 'FRONT_PROJECT_STATUS', category: '前台配置', label: '修改项目状态' },
+  { id: 'FRONT_PROJECT_GROUP', category: '前台配置', label: '修改项目归属分组' },
+  { id: 'FRONT_PROJECT_DELETE', category: '前台配置', label: '删除项目' },
+  { id: 'FRONT_PROJECT_SCOPE', category: '前台配置', label: '可见项目范围' },
+
+  // 后台配置
+  { id: 'BACK_ACCESS', category: '后台配置', label: '访问后台' },
+  { id: 'BACK_PROMPT_CONFIG', category: '后台配置', label: '提示词配置' },
+  { id: 'BACK_PROMPT_TYPE', category: '后台配置', label: '提示词类型配置' },
+  { id: 'BACK_PROMPT_TEMPLATE', category: '后台配置', label: '提示词模板配置' },
+  { id: 'BACK_USER_ADD', category: '后台配置', label: '新增用户' },
+  { id: 'BACK_GROUP_MGMT', category: '后台配置', label: '项目组管理' },
+  { id: 'BACK_ROLE_PERM', category: '后台配置', label: '配置角色权限' },
+  { id: 'BACK_SEEDANCE', category: '后台配置', label: 'seedance权限' },
 ];
 
 const INITIAL_ROLES: Role[] = [
   { 
     id: 'ADMIN', 
     name: '管理员', 
-    permissions: ['SYS_VIEW', 'PROJECT_OWNERSHIP', 'PROJECT_DELETE', 'USER_WRITE', 'ROLE_MANAGE'],
+    permissions: [
+      'FRONT_PROJECT_CREATE', 'FRONT_PROJECT_RENAME', 'FRONT_PROJECT_STATUS', 'FRONT_PROJECT_GROUP', 'FRONT_PROJECT_DELETE', 'FRONT_PROJECT_SCOPE',
+      'BACK_ACCESS', 'BACK_PROMPT_CONFIG', 'BACK_PROMPT_TYPE', 'BACK_PROMPT_TEMPLATE', 'BACK_USER_ADD', 'BACK_GROUP_MGMT', 'BACK_ROLE_PERM', 'BACK_SEEDANCE'
+    ],
     visibility: '全部'
   },
   { 
     id: 'EXECUTIVE_DIRECTOR', 
     name: '总导演', 
-    permissions: ['SYS_VIEW', 'PROJECT_OWNERSHIP', 'PROJECT_DELETE', 'USER_WRITE', 'ROLE_MANAGE'],
+    permissions: [
+      'FRONT_PROJECT_CREATE', 'FRONT_PROJECT_RENAME', 'FRONT_PROJECT_STATUS', 'FRONT_PROJECT_GROUP', 'FRONT_PROJECT_DELETE', 'FRONT_PROJECT_SCOPE',
+      'BACK_ACCESS', 'BACK_PROMPT_CONFIG', 'BACK_PROMPT_TYPE', 'BACK_PROMPT_TEMPLATE', 'BACK_USER_ADD', 'BACK_GROUP_MGMT', 'BACK_ROLE_PERM', 'BACK_SEEDANCE'
+    ],
     visibility: '全部'
   },
   { 
     id: 'DIRECTOR', 
     name: '导演', 
-    permissions: ['PROJECT_OWNERSHIP', 'PROJECT_DELETE', 'USER_WRITE'],
+    permissions: [
+      'FRONT_PROJECT_CREATE', 'FRONT_PROJECT_RENAME', 'FRONT_PROJECT_STATUS', 'FRONT_PROJECT_GROUP', 'FRONT_PROJECT_DELETE', 'FRONT_PROJECT_SCOPE',
+      'BACK_ACCESS'
+    ],
     visibility: '项目组'
   },
   { 
     id: 'PRODUCTION', 
     name: '制作', 
-    permissions: [],
+    permissions: [
+      'FRONT_PROJECT_CREATE', 'FRONT_PROJECT_RENAME', 'FRONT_PROJECT_STATUS'
+    ],
     visibility: '项目组'
   },
 ];
@@ -370,7 +379,7 @@ const SearchableConfigDropdown: React.FC<SearchableConfigDropdownProps> = ({ opt
 };
 
 
-const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
+const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, setGroups, users, setUsers, projects }) => {
   const [activeTab, setActiveTab] = useState('TYPE_MGMT');
 
   // --- Template State ---
@@ -383,13 +392,15 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
   const [showManageTemplatesModal, setShowManageTemplatesModal] = useState(false);
 
   // --- Account & Role State ---
-  const [users, setUsers] = useState<UserAccount[]>(INITIAL_USERS);
   const [roles, setRoles] = useState<Role[]>(INITIAL_ROLES);
-  const [groups, setGroups] = useState<ProjectGroup[]>(INITIAL_GROUPS);
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  
+  // Group Details Modal
+  const [showGroupDetailModal, setShowGroupDetailModal] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<ProjectGroup | null>(null);
   
   // User Permissions Drawer
   const [showUserPermDrawer, setShowUserPermDrawer] = useState(false);
@@ -448,6 +459,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
     { id: 'CHATBOT', label: 'Chatbot', icon: MessageSquare },
     { id: 'TEMPLATE_CONFIG', label: '提示词模板配置', icon: FileText },
     { id: 'ACCOUNT_MGMT', label: '账号管理', icon: Users },
+    { id: 'GROUP_MGMT', label: '项目组管理', icon: Users },
     { id: 'USAGE_STATS', label: '消耗统计', icon: BarChart3 },
   ];
 
@@ -1141,6 +1153,86 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
                </div>
             )}
 
+            {/* GROUP_MGMT: 项目组管理 */}
+            {activeTab === 'GROUP_MGMT' && (
+               <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in">
+                  <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                     <div className="flex items-center gap-3">
+                        <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded text-emerald-600 dark:text-emerald-400">
+                            <Users size={18} />
+                        </div>
+                        <span className="font-bold text-slate-700 dark:text-slate-200">项目组列表</span>
+                     </div>
+                     <button 
+                         onClick={() => setShowAddGroupModal(true)}
+                         className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-emerald-500/20"
+                     >
+                         <Plus size={16} /> 新增项目组
+                     </button>
+                  </div>
+
+                  <div className="w-full overflow-x-auto">
+                     <div className="min-w-[800px] grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        <div className="col-span-3">项目组名</div>
+                        <div className="col-span-4">组员</div>
+                        <div className="col-span-4">承接项目</div>
+                        <div className="col-span-1 text-center">操作</div>
+                     </div>
+                     
+                     <div className="min-w-[800px] divide-y divide-slate-100 dark:divide-slate-800/50">
+                        {groups.map(group => {
+                           const groupUsers = users.filter(u => u.groupId === group.id);
+                           const groupProjects = projects.filter(p => p.groupId === group.id);
+                           
+                           return (
+                             <div key={group.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                <div className="col-span-3 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-2">
+                                   <FolderOpen size={16} className="text-slate-400" />
+                                   {group.name}
+                                </div>
+                                <div className="col-span-4 flex flex-wrap gap-1">
+                                   {groupUsers.length > 0 ? groupUsers.map(u => (
+                                      <span key={u.id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
+                                         {u.username}
+                                      </span>
+                                   )) : (
+                                      <span className="text-slate-400 text-xs italic">暂无组员</span>
+                                   )}
+                                </div>
+                                <div className="col-span-4 flex flex-wrap gap-1">
+                                   {groupProjects.length > 0 ? groupProjects.map(p => (
+                                      <span key={p.id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                         {p.name}
+                                      </span>
+                                   )) : (
+                                      <span className="text-slate-400 text-xs italic">暂无项目</span>
+                                   )}
+                                </div>
+                                <div className="col-span-1 flex justify-center gap-2">
+                                   <button 
+                                      onClick={() => {
+                                        setSelectedGroup(group);
+                                        setShowGroupDetailModal(true);
+                                      }}
+                                      className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                                      title="查看详情"
+                                   >
+                                      <Eye size={16} />
+                                   </button>
+                                </div>
+                             </div>
+                           );
+                        })}
+                        {groups.length === 0 && (
+                           <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+                              暂无项目组数据
+                           </div>
+                        )}
+                     </div>
+                  </div>
+               </div>
+            )}
+
             {/* USAGE_STATS: 消耗统计 */}
             {activeTab === 'USAGE_STATS' && (
                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in flex flex-col h-full">
@@ -1411,9 +1503,84 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
          </div>
       )}
 
+      {/* Group Detail Modal */}
+      {showGroupDetailModal && selectedGroup && (
+         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-4">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in flex flex-col max-h-[80vh]">
+               <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                     <FolderOpen size={20} className="text-emerald-500" />
+                     {selectedGroup.name} - 详情
+                  </h3>
+                  <button onClick={() => setShowGroupDetailModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                     <X size={20} />
+                  </button>
+               </div>
+               
+               <div className="p-6 overflow-y-auto space-y-6">
+                  {/* Members Section */}
+                  <div>
+                     <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
+                        <Users size={16} className="text-blue-500" />
+                        组员列表 ({users.filter(u => u.groupId === selectedGroup.id).length})
+                     </h4>
+                     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+                        {users.filter(u => u.groupId === selectedGroup.id).length > 0 ? (
+                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {users.filter(u => u.groupId === selectedGroup.id).map(u => (
+                                 <div key={u.id} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+                                    <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xs font-bold">
+                                       {u.username.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex flex-col overflow-hidden">
+                                       <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{u.username}</span>
+                                       <span className="text-xs text-slate-500 truncate">{u.email}</span>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                        ) : (
+                           <p className="text-sm text-slate-500 italic text-center py-4">暂无组员</p>
+                        )}
+                     </div>
+                  </div>
+
+                  {/* Projects Section */}
+                  <div>
+                     <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
+                        <FileText size={16} className="text-emerald-500" />
+                        承接项目 ({projects.filter(p => p.groupId === selectedGroup.id).length})
+                     </h4>
+                     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+                        {projects.filter(p => p.groupId === selectedGroup.id).length > 0 ? (
+                           <div className="space-y-2">
+                              {projects.filter(p => p.groupId === selectedGroup.id).map(p => (
+                                 <div key={p.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+                                    <div className="flex items-center gap-3">
+                                       <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500">
+                                          <FolderOpen size={16} />
+                                       </div>
+                                       <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{p.name}</span>
+                                    </div>
+                                    <span className="text-xs text-slate-500">
+                                       {p.createdAt.toLocaleDateString()}
+                                    </span>
+                                 </div>
+                              ))}
+                           </div>
+                        ) : (
+                           <p className="text-sm text-slate-500 italic text-center py-4">暂无项目</p>
+                        )}
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      )}
+
       {/* Role Permission Config Drawer */}
       <div 
-        className={`fixed inset-y-0 right-0 w-[900px] bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 flex flex-col border-l border-slate-200 dark:border-slate-800 ${showRoleDrawer ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed inset-y-0 right-0 w-[90vw] max-w-[1400px] bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 flex flex-col border-l border-slate-200 dark:border-slate-800 ${showRoleDrawer ? 'translate-x-0' : 'translate-x-full'}`}
       >
          <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
             <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
@@ -1433,30 +1600,35 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit }) => {
             </div>
          </div>
          
-         <div className="flex-1 overflow-auto p-5">
-            <div className="min-w-[800px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
-               <table className="w-full text-sm text-left border-collapse">
+         <div className="flex-1 overflow-hidden p-5 flex flex-col">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-auto flex-1">
+               <table className="w-full text-sm text-left border-collapse min-w-[1600px]">
                   <thead>
+                     <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                        <th className="px-4 py-2 font-bold text-slate-600 dark:text-slate-300 w-32 sticky left-0 bg-slate-100 dark:bg-slate-800 z-10 border-r border-slate-200 dark:border-slate-700" rowSpan={2}>角色名称</th>
+                        <th className="px-2 py-2 font-bold text-slate-600 dark:text-slate-300 text-center border-r border-slate-200 dark:border-slate-700" colSpan={6}>前台配置</th>
+                        <th className="px-2 py-2 font-bold text-slate-600 dark:text-slate-300 text-center border-r border-slate-200 dark:border-slate-700" colSpan={8}>后台配置</th>
+                        <th className="px-4 py-2 font-bold text-slate-600 dark:text-slate-300 text-center w-32" rowSpan={2}>可见范围</th>
+                     </tr>
                      <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                        <th className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 w-32"></th>
                         {PERMISSIONS_LIST.map(perm => (
-                           <th key={perm.id} className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 text-center">
+                           <th key={perm.id} className="px-2 py-3 font-bold text-slate-500 dark:text-slate-400 text-center min-w-[100px] text-xs border-r border-slate-200 dark:border-slate-800/50 last:border-r-0">
                               {perm.label}
                            </th>
                         ))}
-                        <th className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 text-center w-32">可见范围</th>
                      </tr>
                   </thead>
                   <tbody>
                      {roles.map((role) => (
-                        <tr key={role.id} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                           <td className="px-4 py-4 font-bold text-slate-800 dark:text-slate-200 bg-slate-50/30 dark:bg-slate-800/10">
+                        <tr key={role.id} className="group border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                           <td className="px-4 py-4 font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/80 sticky left-0 z-10 border-r border-slate-200 dark:border-slate-800/50">
                               {role.name}
                            </td>
-                           {PERMISSIONS_LIST.map(perm => {
+                           {PERMISSIONS_LIST.map((perm, index) => {
                               const isChecked = role.permissions.includes(perm.id);
+                              const isLastInGroup = index === 5 || index === 13;
                               return (
-                                 <td key={perm.id} className="px-4 py-4 text-center">
+                                 <td key={perm.id} className={`px-2 py-4 text-center ${isLastInGroup ? 'border-r border-slate-200 dark:border-slate-800/50' : ''}`}>
                                     <div className="flex justify-center">
                                        <input 
                                           type="checkbox" 
