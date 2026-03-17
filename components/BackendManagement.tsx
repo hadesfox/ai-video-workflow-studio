@@ -477,7 +477,6 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
   const menuItems = [
     { id: 'CONFIG_MGMT', label: '提示词配置管理', icon: LayoutGrid },
     { id: 'TYPE_MGMT', label: '提示词类型管理', icon: Settings },
-    { id: 'CHATBOT', label: 'Chatbot', icon: MessageSquare },
     { id: 'TEMPLATE_CONFIG', label: '提示词模板配置', icon: FileText },
     { id: 'ACCOUNT_MGMT', label: '账号管理', icon: Users },
     { id: 'GROUP_MGMT', label: '项目组管理', icon: Users },
@@ -692,21 +691,37 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
            <span className="font-bold text-lg tracking-wide text-slate-800 dark:text-slate-100">Spark Agent</span>
         </div>
 
-        <div className="flex-1 py-4 space-y-1">
-           {menuItems.map(item => (
+        <div className="flex-1 py-4 flex flex-col">
+           <div className="space-y-1">
+             {menuItems.map(item => (
+               <button
+                 key={item.id}
+                 onClick={() => setActiveTab(item.id)}
+                 className={`w-full flex items-center px-6 py-3 text-sm font-medium transition-colors border-r-2 ${
+                   activeTab === item.id 
+                     ? 'bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-500' 
+                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border-transparent hover:text-slate-900 dark:hover:text-slate-200'
+                 }`}
+               >
+                 <item.icon size={18} className="mr-3" />
+                 {item.label}
+               </button>
+             ))}
+           </div>
+           
+           <div className="mt-auto space-y-1">
              <button
-               key={item.id}
-               onClick={() => setActiveTab(item.id)}
+               onClick={() => setActiveTab('CHATBOT')}
                className={`w-full flex items-center px-6 py-3 text-sm font-medium transition-colors border-r-2 ${
-                 activeTab === item.id 
+                 activeTab === 'CHATBOT' 
                    ? 'bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-500' 
                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border-transparent hover:text-slate-900 dark:hover:text-slate-200'
                }`}
              >
-               <item.icon size={18} className="mr-3" />
-               {item.label}
+               <MessageSquare size={18} className="mr-3" />
+               Chatbot
              </button>
-           ))}
+           </div>
         </div>
         
         <div className="p-4 text-xs text-center text-slate-400 border-t border-slate-200 dark:border-slate-800">

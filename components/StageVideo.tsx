@@ -579,28 +579,25 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                <h2 className="text-lg font-bold text-white">{activeEpisode?.name}</h2>
             </div>
             
-            {/* Center Tabs */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex bg-slate-800/50 p-1 rounded-lg border border-slate-700/50">
-               <button 
-                  onClick={() => setSubTab && setSubTab(VideoSubTab.VIDU)}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                     subTab === VideoSubTab.VIDU 
-                     ? 'bg-blue-600 text-white shadow-lg' 
-                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                  }`}
-               >
+            {/* Center Tabs (PiP Toggle) */}
+            <div 
+               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-36 h-10 rounded-xl cursor-pointer group"
+               onClick={() => setSubTab && setSubTab(subTab === VideoSubTab.VIDU ? VideoSubTab.SEEDANCE : VideoSubTab.VIDU)}
+            >
+               <div className={`absolute transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                  subTab === VideoSubTab.VIDU 
+                     ? 'inset-0 bg-transparent border-[1.5px] border-[#38BDF8] text-[#38BDF8] tracking-[1px] group-hover:bg-[#38BDF8] group-hover:text-[#111827] font-bold text-sm z-0 rounded-xl flex items-center pl-4' 
+                     : 'bottom-1 right-1 px-2 py-0.5 bg-slate-900/90 text-slate-300 text-[10px] z-10 rounded shadow-lg backdrop-blur-md group-hover:bg-slate-700 group-hover:text-white flex items-center justify-center'
+               }`}>
                   Vidu
-               </button>
-               <button 
-                  onClick={() => setSubTab && setSubTab(VideoSubTab.SEEDANCE)}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                     subTab === VideoSubTab.SEEDANCE 
-                     ? 'bg-blue-600 text-white shadow-lg' 
-                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                  }`}
-               >
+               </div>
+               <div className={`absolute transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                  subTab === VideoSubTab.SEEDANCE 
+                     ? 'inset-0 bg-gradient-to-br from-[#0e7490] via-[#1e3a8a] via-80% to-[#FFD700]/30 border border-[#33DEFF]/40 text-white font-bold text-sm z-0 rounded-xl shadow-[0_4px_15px_rgba(51,222,255,0.2)] group-hover:shadow-[0_6px_20px_rgba(51,222,255,0.3)] group-hover:-translate-y-[2px] flex items-center pl-4' 
+                     : 'bottom-1 right-1 px-2 py-0.5 bg-slate-900/90 text-slate-300 text-[10px] z-10 rounded shadow-lg backdrop-blur-md group-hover:bg-slate-700 group-hover:text-white flex items-center justify-center'
+               }`}>
                   Seedance
-               </button>
+               </div>
             </div>
 
             <div className="flex items-center gap-3">
