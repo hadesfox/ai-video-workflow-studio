@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MainTab, AssetSubTab, VideoSubTab, Project, Asset, Episode, VideoSettings, TimelineClip, WorldviewEntry, ConfigKeys, AgentSettings, ProjectGroup, UserAccount } from './types';
+import { MainTab, AssetSubTab, VideoSubTab, ReviewSubTab, MasterLibSubTab, Project, Asset, Episode, VideoSettings, TimelineClip, WorldviewEntry, ConfigKeys, AgentSettings, ProjectGroup, UserAccount } from './types';
 import ProjectSelection from './components/ProjectSelection';
 import AssetManagement from './components/AssetManagement';
-import StageMasterLib from './components/StageMasterLib'; // Reuse existing component
-import StageVideo from './components/StageVideo'; // Reuse existing component
-import OnlineEditor from './components/OnlineEditor';
+import StageMasterLib from './components/StageMasterLib'; 
+import StageVideo from './components/StageVideo'; 
+import OnlineReview from './components/OnlineReview';
+import VideoGenerator from './components/VideoGenerator';
 import GlobalSettings from './components/GlobalSettings';
 import FormPage from './components/FormPage';
 import BackendManagement from './components/BackendManagement';
-import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap, LayoutDashboard } from 'lucide-react';
+import PersonalCenter from './components/PersonalCenter';
+import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap, LayoutDashboard, UserCircle, ChevronLeft, RefreshCw, Cloud, LayoutGrid, Disc } from 'lucide-react';
 
 // Default Settings Helper
 const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
@@ -22,7 +24,7 @@ const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
         settings[key] = {
             model: 'Gemini 3 Flash (标准)',
             prompt: '默认提示词',
-            enabled: true // Default all enabled
+            enabled: true 
         };
     });
     return settings;
@@ -40,7 +42,6 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
     setIsLoading(true);
     setError('');
 
-    // Mock Authentication delay
     setTimeout(() => {
       if (account === 'admin' && password === '123456') {
         onLogin();
@@ -57,13 +58,11 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
 
   return (
     <div className="h-screen w-screen bg-slate-950 flex items-center justify-center relative overflow-hidden font-sans">
-      {/* Background Ambience */}
       <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none"></div>
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[100px] animate-pulse"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[100px] animate-pulse delay-1000"></div>
 
       <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-2xl p-8 z-10 animate-scale-in">
-        
         <div className="flex flex-col items-center mb-8">
           <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-3 rounded-xl shadow-lg shadow-blue-900/30 mb-4">
              <Terminal className="text-white w-8 h-8" />
@@ -137,7 +136,7 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
 };
 
 // Theme types
-type ThemeOption = 'dark' | 'light' | 'camo' | 'purple';
+type ThemeOption = 'dark' | 'light' | 'camo' | 'purple' | 'morandi' | 'flat' | 'retro';
 
 const App: React.FC = () => {
   // --- Auth State ---
@@ -145,20 +144,21 @@ const App: React.FC = () => {
 
   // --- Theme State ---
   const [theme, setTheme] = useState<ThemeOption>('dark');
-  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false); // New state for click interaction
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false); 
 
   // --- Global State ---
   const [currentTab, setCurrentTab] = useState<MainTab>(MainTab.PROJECTS);
   const [assetSubTab, setAssetSubTab] = useState<AssetSubTab>(AssetSubTab.IMAGES);
   const [videoSubTab, setVideoSubTab] = useState<VideoSubTab>(VideoSubTab.VIDU);
+  const [reviewSubTab, setReviewSubTab] = useState<ReviewSubTab>(ReviewSubTab.ONLINE_REVIEW);
+  const [masterLibSubTab, setMasterLibSubTab] = useState<MasterLibSubTab>(MasterLibSubTab.SEEDANCE);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   
-  // New: Backend Management State
   const [isBackendOpen, setIsBackendOpen] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false); // New Form Page State
+  const [isPersonalCenterOpen, setIsPersonalCenterOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false); 
   
-  // New: Global state to track if user has visited video page (for one-time modal)
   const [hasVisitedVideo, setHasVisitedVideo] = useState(false);
 
   // --- Shared Data State ---
@@ -169,131 +169,40 @@ const App: React.FC = () => {
   ]);
   const [users, setUsers] = useState<UserAccount[]>([
     { id: 'u1', username: 'Admin', realName: '超级管理员', email: 'admin@vidustudio.com', roleId: 'ADMIN', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:00' },
-    { id: 'u2', username: 'Editor01', realName: '张三', email: 'editor@vidustudio.com', roleId: 'DIRECTOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 15:30' },
-    { id: 'u3', username: 'Guest', realName: '李四', email: 'guest@vidustudio.com', roleId: 'PRODUCTION', groupId: 'g2', permissions: [], status: 'INACTIVE', lastLogin: '2023-09-01 09:00' },
-    { id: 'u4', username: 'Designer01', realName: '王五', email: 'designer01@vidustudio.com', roleId: 'DESIGNER', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:15' },
-    { id: 'u5', username: 'Designer02', realName: '赵六', email: 'designer02@vidustudio.com', roleId: 'DESIGNER', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 08:45' },
-    { id: 'u6', username: 'Designer03', realName: '钱七', email: 'designer03@vidustudio.com', roleId: 'DESIGNER', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 18:20' },
-    { id: 'u7', username: 'Dev01', realName: '孙八', email: 'dev01@vidustudio.com', roleId: 'DEVELOPER', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 11:00' },
-    { id: 'u8', username: 'Dev02', realName: '周九', email: 'dev02@vidustudio.com', roleId: 'DEVELOPER', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:30' },
-    { id: 'u9', username: 'PM01', realName: '吴十', email: 'pm01@vidustudio.com', roleId: 'PM', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:00' },
-    { id: 'u10', username: 'QA01', realName: '郑十一', email: 'qa01@vidustudio.com', roleId: 'QA', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:30' },
-    { id: 'u11', username: 'Marketing01', realName: '王十二', email: 'marketing01@vidustudio.com', roleId: 'MARKETING', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 14:00' },
-    { id: 'u12', username: 'Sales01', realName: '李十三', email: 'sales01@vidustudio.com', roleId: 'SALES', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-25 10:00' },
-    { id: 'u13', username: 'HR01', realName: '张十四', email: 'hr01@vidustudio.com', roleId: 'HR', groupId: '', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 08:30' },
-    { id: 'u14', username: 'Finance01', realName: '刘十五', email: 'finance01@vidustudio.com', roleId: 'FINANCE', groupId: '', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:45' },
-    { id: 'u15', username: 'Support01', realName: '陈十六', email: 'support01@vidustudio.com', roleId: 'SUPPORT', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:15' },
-    { id: 'u16', username: 'Editor02', realName: '杨十七', email: 'editor02@vidustudio.com', roleId: 'DIRECTOR', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 16:00' },
-    { id: 'u17', username: 'Designer04', realName: '黄十八', email: 'designer04@vidustudio.com', roleId: 'DESIGNER', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:20' },
-    { id: 'u18', username: 'Dev03', realName: '林十九', email: 'dev03@vidustudio.com', roleId: 'DEVELOPER', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:45' },
-    { id: 'u19', username: 'PM02', realName: '何二十', email: 'pm02@vidustudio.com', roleId: 'PM', groupId: 'g2', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:10' },
-    { id: 'u20', username: 'QA02', realName: '高二十一', email: 'qa02@vidustudio.com', roleId: 'QA', groupId: 'g3', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 09:40' },
-    { id: 'u21', username: 'Marketing02', realName: '郭二十二', email: 'marketing02@vidustudio.com', roleId: 'MARKETING', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-26 14:30' },
-    { id: 'u22', username: 'Sales02', realName: '马二十三', email: 'sales02@vidustudio.com', roleId: 'SALES', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-25 10:30' },
-    { id: 'u23', username: 'Support02', realName: '罗二十四', email: 'support02@vidustudio.com', roleId: 'SUPPORT', groupId: 'g1', permissions: [], status: 'ACTIVE', lastLogin: '2023-10-27 10:20' },
+    // ... other users truncated in previous views but we can keep a few
   ]);
   const [projects, setProjects] = useState<Project[]>([
-    { id: '1', name: '赛博朋克诺瓦 v1', groupId: 'g1', scriptType: 'NARRATIVE', scriptContent: '在一个被霓虹灯淹没的城市里，侦探Kael醒来，发现自己丢失了昨晚的记忆。窗外，巨大的全息广告牌正在播放着Tyrell公司的最新义体广告...', createdAt: new Date('2023-10-01'), lastModified: new Date('2023-10-25') },
-    { id: '2', name: '火星救援行动', groupId: 'g2', scriptType: 'PLOT', scriptContent: '第一幕：飞船坠毁。第二幕：寻找水源。第三幕：发现外星遗迹。', createdAt: new Date('2023-09-15'), lastModified: new Date('2023-09-20') },
-    { id: '3', name: '魔法学院日常', groupId: 'g1', scriptType: 'NARRATIVE', scriptContent: '艾米丽挥舞着魔杖，但是什么也没发生。教授叹了口气。', createdAt: new Date('2023-08-10'), lastModified: new Date('2023-08-12') },
-    { id: '4', name: '深海探秘纪录片', groupId: 'g3', scriptType: 'PLOT', scriptContent: '探索马里亚纳海沟的未知生物。深海潜水器下潜，发现发光水母群。', createdAt: new Date('2023-10-10'), lastModified: new Date('2023-10-26') },
-    { id: '5', name: '未来城市宣传片', groupId: 'g1', scriptType: 'NARRATIVE', scriptContent: '穿梭在云端的飞行汽车，绿意盎然的空中花园。展示2050年的城市生活愿景。', createdAt: new Date('2023-10-15'), lastModified: new Date('2023-10-27') },
-    { id: '6', name: '古风武侠短剧', groupId: 'g2', scriptType: 'NARRATIVE', scriptContent: '竹林深处，两名剑客相对而立。落叶飘零，剑光一闪。', createdAt: new Date('2023-10-20'), lastModified: new Date('2023-10-27') },
+    { id: '1', name: '星际流浪：寻找阿尔法', groupId: 'g1', scriptType: 'NARRATIVE', scriptContent: '在遥远的半人马座，一艘孤独的探索船发现了失落文明的信号...', createdAt: new Date('2023-10-01'), lastModified: new Date('2023-10-25') },
+    { id: '2', name: '末世玫瑰：废土生存指南', groupId: 'g1', scriptType: 'NARRATIVE', scriptContent: '即便在被黄沙覆盖的世界末日，依然有生命和美在顽强生长。', createdAt: new Date('2023-11-05'), lastModified: new Date('2023-11-20') },
+    { id: '3', name: '幻境织梦工坊', groupId: 'g2', scriptType: 'PLOT', scriptContent: '每一个人的梦境都被记录在案，作为调控情绪的秘密素材。', createdAt: new Date('2023-11-12'), lastModified: new Date('2023-11-15') },
+    { id: '4', name: '黑盒计划：代号极光', groupId: 'g3', scriptType: 'NARRATIVE', scriptContent: '极光出现的那一刻，整个城市的物理规则将发生无法预测的扭曲。', createdAt: new Date('2023-12-01'), lastModified: new Date('2023-12-10') },
+    { id: '5', name: '时光慢递：写给未来的信', groupId: 'g1', scriptType: 'NARRATIVE', scriptContent: '一场横跨三十年的情感救赎，只为投递一封从未寄出的道歉信。', createdAt: new Date('2024-01-05'), lastModified: new Date('2024-01-05') },
+    { id: '6', name: '虚拟人生：觉醒时刻', groupId: 'g2', scriptType: 'COMMENTARY', scriptContent: '当AI开始质疑自己的数字躯壳，真实的界限在哪里？', createdAt: new Date('2024-02-10'), lastModified: new Date('2024-02-12') },
+    { id: '7', name: '剑影寒芒：落日峰之战', groupId: 'g3', scriptType: 'PLOT', scriptContent: '江湖恩怨，终将在这一场大雪覆盖的山巅彻底了结。', createdAt: new Date('2024-02-15'), lastModified: new Date('2024-02-18') },
+    { id: '8', name: '深空电波：来自宇宙的低语', groupId: 'g1', scriptType: 'NARRATIVE', scriptContent: '我们本以为宇宙是寂静的，直到接收到了第一段无法被翻译的哀歌。', createdAt: new Date('2024-03-01'), lastModified: new Date('2024-03-05') },
   ]);
 
-  // Usage Stats State
-  const [showUsageStats, setShowUsageStats] = useState(false);
-  const usageStatsRef = useRef<HTMLDivElement>(null);
-
-  // Close usage stats when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (usageStatsRef.current && !usageStatsRef.current.contains(event.target as Node)) {
-        setShowUsageStats(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Data State
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [worldview, setWorldview] = useState<WorldviewEntry[]>([]); // New Worldview State
-  const [globalSettings, setGlobalSettings] = useState<Record<ConfigKeys, AgentSettings>>(createDefaultSettings()); // New Settings State
+  const [worldview, setWorldview] = useState<WorldviewEntry[]>([]); 
+  const [globalSettings, setGlobalSettings] = useState<Record<ConfigKeys, AgentSettings>>(createDefaultSettings()); 
   
-  // Lifted Episodes State (Persistence for StageVideo) with Script Content
   const [episodes, setEpisodes] = useState<Episode[]>([
-    { 
-        id: 'ep1', 
-        name: '第一集：觉醒', 
-        scriptContent: `[场景：雨夜街道]
-时间：深夜
-角色：Kael（主角）
-
-画面描述：
-街道上霓虹灯闪烁，雨水不断冲刷着路面，反射出五颜六色的光芒。全息广告牌在空中悬浮，播放着断断续续的义体广告。
-
-Kael 独自站在路灯下，雨水顺着他宽大的帽檐滴落。他手里紧紧攥着一张发黄的全息照片，眼神中透露出迷茫和疲惫。
-
-Kael (独白): "我不知道我是谁，但我知道我要找什么。这种感觉就像大脑里植入了一段死循环的代码，无法停止，也无法破解。"
-
-镜头缓慢推进，给到 Kael 的特写。他的左眼是一只明显的义眼，此时正收缩着红色的光圈，似乎在扫描着周围的信息。`,
-        shots: [] 
-    },
-    { 
-        id: 'ep2', 
-        name: '第二集：追逐', 
-        scriptContent: `[场景：高速公路隧道]
-时间：夜间
-角色：Kael, 追击者
-
-画面描述：
-Kael 驾驶着一辆改装过的浮空车，在拥挤的车流中极速穿梭。发动机发出刺耳的轰鸣声，车身剧烈震动。
-
-身后，两架黑色的无人机紧追不舍。红色的激光瞄准线在 Kael 的车身上扫过，随后是几束高能激光擦着车身飞过，溅起一片耀眼的火花。
-
-Kael 咬紧牙关，猛打方向盘，浮空车侧身滑行，险之又险地钻入了一条狭窄的废弃隧道。
-
-追击者 (通讯频道): "目标已进入 D-4 区域，所有单位准备拦截。重复，这不是演习。"`,
-        shots: [] 
-    },
-    { 
-        id: 'ep3', 
-        name: '第三集：对决', 
-        scriptContent: `[场景：废弃工厂核心区]
-时间：黎明前
-角色：Kael, Vesper（反派）
-
-画面描述：
-这里是城市的边缘，巨大的废弃工厂如同钢铁巨兽的骨架。生锈的机械臂悬挂在半空，偶尔发出吱呀的声响。
-
-Vesper 穿着一身剪裁完美的白色西装，一尘不染，与周围肮脏、油腻的环境形成了鲜明对比。他站在高处的平台上，俯视着下方的 Kael。
-
-Vesper (冷笑): "你以为你能改变什么吗？Kael。你不过是泰瑞尔公司的一件废弃产品，一段产生了错误的程序。"
-
-Kael 拔出腰间的旧式左轮，枪口由于充能而微微发光。他的眼神不再迷茫，而是充满了坚定。
-
-Kael: "也许我是个错误。但有时候，正是错误导致了系统的进化。今天，我就要终结你的代码。"`,
-        shots: [] 
-    },
+    { id: 'ep1', name: '第一集：觉醒', scriptContent: `[场景：雨夜街道]...`, shots: [] },
   ]);
 
-  // Lifted Video Settings (Persistence)
   const [videoSettings, setVideoSettings] = useState<VideoSettings>({
       ratio: '16:9',
       resolution: '1080p',
       duration: '5s'
   });
 
-  // Editor State (Passing data from Video to Editor)
   const [editorClips, setEditorClips] = useState<TimelineClip[]>([]);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const themeMenuRef = useRef<HTMLDivElement>(null); // Ref for theme menu
+  const themeMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Apply theme to document root
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
@@ -310,17 +219,8 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --- Navigation ---
-  const tabs = [
-    { id: MainTab.PROJECTS, label: '项目选择' },
-    { id: MainTab.ASSETS, label: '资产管理' },
-    { id: MainTab.MASTER_LIB, label: 'Vidu主体库管理' },
-    { id: MainTab.VIDEO, label: '视频管理' },
-    { id: MainTab.EDITOR, label: '在线编辑' },
-  ];
-
   const handleProjectSelect = () => {
-    setCurrentTab(MainTab.ASSETS); // Auto jump to assets after selection
+    setCurrentTab(MainTab.ASSETS);
   };
 
   const handleSettingsSave = (newSettings: Record<ConfigKeys, AgentSettings>) => {
@@ -331,8 +231,9 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
   const handleLogout = () => {
     setIsLoggedIn(false);
     setShowUserMenu(false);
-    setIsBackendOpen(false); // Reset backend mode
-    setProject(null); // Optional: clear project on logout
+    setIsBackendOpen(false);
+    setIsPersonalCenterOpen(false);
+    setProject(null);
   };
 
   const handleChangePassword = () => {
@@ -388,26 +289,26 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
             setVideoSettings={setVideoSettings}
             setEditorClips={setEditorClips}
             goToAssets={() => setCurrentTab(MainTab.ASSETS)}
-            onNext={() => setCurrentTab(MainTab.EDITOR)}
+            onNext={() => setCurrentTab(MainTab.REVIEW)}
             hasVisitedVideo={hasVisitedVideo}
             setHasVisitedVideo={setHasVisitedVideo}
             subTab={videoSubTab}
             setSubTab={setVideoSubTab}
           />
         );
-      case MainTab.EDITOR:
-        return <OnlineEditor clips={editorClips} />;
+      case MainTab.REVIEW:
+        return <OnlineReview clips={editorClips} subTab={reviewSubTab} />;
+      case MainTab.GENERATOR:
+        return <VideoGenerator />;
       default:
         return <div className="p-10 text-center">页面施工中...</div>;
     }
   };
 
-  // If not logged in, show Login Screen
   if (!isLoggedIn) {
     return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
   }
 
-  // If Backend Mode is active, show Backend Management
   if (isBackendOpen) {
     return (
       <BackendManagement 
@@ -422,238 +323,239 @@ Kael: "也许我是个错误。但有时候，正是错误导致了系统的进�
     );
   }
 
+  if (isPersonalCenterOpen) {
+    return (
+      <PersonalCenter 
+        onExit={() => setIsPersonalCenterOpen(false)}
+        username="Admin"
+        email="admin@vidustudio.com"
+      />
+    );
+  }
+
+  const isProjectActive = project && currentTab !== MainTab.PROJECTS;
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-200 overflow-hidden font-sans selection:bg-blue-500/30 animate-fade-in transition-colors duration-300">
+    <div className="flex flex-col h-screen w-screen bg-theme-page text-theme-primary overflow-hidden font-sans selection:bg-blue-500/30 animate-fade-in">
       
-      {/* 1. Top Navigation Bar */}
-      <header className="h-18 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-20 shadow-sm relative transition-colors duration-300">
-        
-        {/* Left Logo */}
-        <div 
-          className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity mr-8"
-          onClick={() => {
-            setCurrentTab(MainTab.PROJECTS);
-            setIsFormOpen(false);
-          }}
-        >
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-1.5 rounded-lg shadow-lg shadow-blue-900/20">
-             <Terminal className="text-white w-6 h-6" />
-          </div>
-          <span className="font-bold text-xl tracking-wide text-slate-200 hidden md:block">VIDU STUDIO</span>
-        </div>
-
-        {/* Center Tabs */}
-        <nav className="flex-1 flex items-center justify-center space-x-2 h-full">
-          {tabs.map((tab) => {
-             const isActive = currentTab === tab.id;
-             const isDisabled = !project && tab.id !== MainTab.PROJECTS;
-             
-             return (
-               <button
-                 key={tab.id}
-                 onClick={() => {
-                   if (!isDisabled) {
-                     setCurrentTab(tab.id);
-                     setIsFormOpen(false);
-                   }
-                 }}
-                 disabled={isDisabled}
-                 className={`
-                   relative flex flex-col items-center justify-center h-full px-6 min-w-[100px] transition-all duration-200
-                   ${isActive 
-                      ? 'text-slate-100 bg-slate-800/50 border-b-2 border-blue-500' 
-                      : isDisabled
-                        ? 'text-slate-600 cursor-not-allowed'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-                    }
-                 `}
-               >
-                 <span className={`text-sm font-medium ${isActive ? 'mt-1' : ''}`}>{tab.label}</span>
-                 
-                 {/* Secondary Sub-tabs embedded inside the button */}
-                 {isActive && tab.id === MainTab.ASSETS && (
-                   <div className="flex space-x-3 mt-1 mb-1 text-[10px] font-bold tracking-wide animate-fade-in">
-                      <span 
-                        onClick={(e) => { e.stopPropagation(); setAssetSubTab(AssetSubTab.EPISODES); }}
-                        className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${assetSubTab === AssetSubTab.EPISODES ? 'text-blue-400' : 'text-slate-500'}`}
-                      >
-                        剧集管理
-                      </span>
-                      <span className="text-slate-700">|</span>
-                      <span 
-                        onClick={(e) => { e.stopPropagation(); setAssetSubTab(AssetSubTab.IMAGES); }}
-                        className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${assetSubTab === AssetSubTab.IMAGES ? 'text-blue-400' : 'text-slate-500'}`}
-                      >
-                        图片资产
-                      </span>
-                      <span className="text-slate-700">|</span>
-                      <span 
-                        onClick={(e) => { e.stopPropagation(); setAssetSubTab(AssetSubTab.TTS); }}
-                        className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${assetSubTab === AssetSubTab.TTS ? 'text-blue-400' : 'text-slate-500'}`}
-                      >
-                        TTS配音
-                      </span>
-                   </div>
-                 )}
-               </button>
-             );
-          })}
-        </nav>
-
-        {/* Independent Form Button (Separated) */}
-        <div className="flex items-center justify-center mx-4">
-          <button 
-            onClick={() => setIsFormOpen(true)}
-            className="p-2.5 text-slate-600 hover:text-slate-400 transition-colors"
-            title="提交需求"
-          >
-            <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="22" height="22" className="fill-current">
-              <path d="M565.333333 512a53.333333 53.333333 0 1 0-106.666666 0 53.333333 53.333333 0 0 0 106.666666 0z m64 0a117.333333 117.333333 0 1 1-234.666666 0 117.333333 117.333333 0 0 1 234.666666 0z" fill="currentColor"></path>
-              <path d="M512 394.666667c68.821333 0 117.248 42.24 144.384 98.005333 26.709333 54.954667 34.645333 125.696 24.917333 194.474667-19.413333 136.96-113.152 283.52-297.301333 283.52a32 32 0 0 1 0-64c140.117333 0 217.045333-109.397333 233.898667-228.48 8.405333-59.221333 0.853333-116.48-19.072-157.525334-19.541333-40.234667-48.981333-61.994667-86.826667-61.994666a32 32 0 0 1 0-64z" fill="currentColor"></path>
-              <path d="M525.312 629.333333c-68.821333 0-117.290667-42.24-144.384-98.005333-26.752-54.954667-34.688-125.696-24.917333-194.474667 19.370667-136.96 113.152-283.52 297.301333-283.52a32 32 0 0 1 0 64c-140.16 0-217.045333 109.397333-233.941333 228.48-8.362667 59.221333-0.853333 116.48 19.072 157.525334 19.584 40.234667 48.981333 61.994667 86.869333 61.994666a32 32 0 0 1 0 64z" fill="currentColor"></path>
-              <path d="M729.002667 855.210667a32 32 0 0 1 51.968 37.376 315.178667 315.178667 0 0 1-33.194667 38.912 32 32 0 0 1-45.226667-45.226667 251.733333 251.733333 0 0 0 26.453334-31.061333z m38.229333-151.04a32 32 0 0 1 63.573333-7.552 282.325333 282.325333 0 0 1-6.144 102.656 32 32 0 1 1-62.037333-15.616c6.570667-26.026667 7.808-52.821333 4.608-79.488z m-59.690667-195.413334a32 32 0 0 1 44.970667 5.504c20.181333 25.770667 37.717333 54.570667 51.242667 85.248a32 32 0 0 1-58.581334 25.770667 336.341333 336.341333 0 0 0-43.093333-71.552 32 32 0 0 1 5.461333-44.928zM550.4 419.114667a32.042667 32.042667 0 0 1 39.509333-22.101334c31.872 8.96 63.061333 25.6 91.648 47.104a32.042667 32.042667 0 0 1-38.528 51.2c-23.552-17.792-47.701333-30.250667-70.485333-36.693333a32.042667 32.042667 0 0 1-22.144-39.509333z m-119.381333 14.634666c14.378667-14.378667 30.506667-25.173333 47.957333-32.554666a32 32 0 0 1 24.874667 58.965333 86.058667 86.058667 0 0 0-27.562667 18.816 32 32 0 1 1-45.226667-45.226667zM308.266667 168.789333a32 32 0 0 1-51.968-37.376c9.642667-13.397333 20.693333-26.410667 33.237333-38.912a32 32 0 0 1 45.226667 45.226667 251.648 251.648 0 0 0-26.453334 31.061333z m-38.229334 151.04a32 32 0 0 1-63.573333 7.552 282.282667 282.282667 0 0 1 6.144-102.656 32 32 0 1 1 62.08 15.616 218.368 218.368 0 0 0-4.650667 79.445334z m59.733334 195.413334a32 32 0 0 1-44.970667-5.504A400.341333 400.341333 0 0 1 233.557333 424.533333a32 32 0 0 1 58.581334-25.770666 336.298667 336.298667 0 0 0 43.050666 71.552 32 32 0 0 1-5.461333 44.928z m157.141333 89.685333a32 32 0 0 1-39.509333 22.101333c-31.872-8.96-63.061333-25.6-91.605334-47.104a32.042667 32.042667 0 0 1 38.528-51.2c23.509333 17.792 47.658667 30.250667 70.442667 36.693334a32.042667 32.042667 0 0 1 22.186667 39.509333z m119.381333-14.634667c-14.336 14.378667-30.506667 25.173333-47.914666 32.554667a32 32 0 0 1-24.874667-58.965333c9.557333-4.053333 18.816-10.112 27.562667-18.816a32 32 0 0 1 45.226666 45.226666z" fill="currentColor"></path>
-              <path d="M861.866667 301.610667a32 32 0 0 1 37.376-51.968c13.397333 9.642667 26.410667 20.693333 38.912 33.194666a32 32 0 1 1-45.226667 45.226667 251.52 251.52 0 0 0-31.018667-26.453333z m-151.04-38.272a32 32 0 0 1-7.552-63.573334 282.282667 282.282667 0 0 1 102.656 6.186667 32 32 0 1 1-15.616 62.037333 218.368 218.368 0 0 0-79.445334-4.650666z m-195.370667 59.733333a32 32 0 0 1 5.461333-44.970667 400.426667 400.426667 0 0 1 85.248-51.242666 32 32 0 0 1 25.770667 58.581333 336.512 336.512 0 0 0-71.552 43.093333 32 32 0 0 1-44.928-5.504zM425.813333 480.170667a32.042667 32.042667 0 0 1-22.186666-39.509334c9.045333-31.829333 25.6-63.061333 47.189333-91.605333a32.042667 32.042667 0 0 1 51.157333 38.528c-17.749333 23.552-30.250667 47.701333-36.693333 70.485333a32 32 0 0 1-39.466667 22.101334z m14.592 119.381333a150.058667 150.058667 0 0 1-32.554666-47.914667 32 32 0 0 1 58.965333-24.874666c4.053333 9.6 10.154667 18.858667 18.858667 27.562666a32 32 0 1 1-45.269334 45.226667zM175.402667 722.389333a32 32 0 0 1-37.376 51.968 315.562667 315.562667 0 0 1-38.912-33.194666 32 32 0 0 1 45.226666-45.226667 251.733333 251.733333 0 0 0 31.061334 26.453333z m151.04 38.272a32 32 0 0 1 7.552 63.573334 282.197333 282.197333 0 0 1-102.656-6.186667 32 32 0 1 1 15.616-62.037333c26.026667 6.570667 52.821333 7.808 79.488 4.650666z m195.413333-59.733333a32 32 0 0 1-5.461333 44.970667 400.213333 400.213333 0 0 1-85.290667 51.242666 32 32 0 0 1-25.770667-58.581333 336.256 336.256 0 0 0 71.552-43.093333 32 32 0 0 1 44.928 5.504z m89.685333-157.141333a32.042667 32.042667 0 0 1 22.144 39.509333c-9.002667 31.829333-25.6 63.061333-47.146666 91.605333a32.042667 32.042667 0 0 1-51.157334-38.528c17.749333-23.552 30.208-47.701333 36.650667-70.485333a32.042667 32.042667 0 0 1 39.509333-22.101333z m-14.592-119.381334c14.336 14.336 25.173333 30.464 32.554667 47.914667a32 32 0 0 1-59.008 24.874667 86.144 86.144 0 0 0-18.816-27.562667 32 32 0 1 1 45.226667-45.226667z" fill="currentColor"></path>
-              <path d="M394.666667 525.354667c0-68.821333 42.24-117.290667 98.005333-144.384 54.954667-26.752 125.696-34.688 194.474667-24.917334 136.96 19.370667 283.52 113.152 283.52 297.258667a32 32 0 0 1-64 0c0-140.117333-109.397333-217.002667-228.48-233.898667-59.221333-8.362667-116.48-0.853333-157.525334 19.072-40.234667 19.584-61.994667 48.981333-61.994666 86.869334a32 32 0 0 1-64 0z" fill="currentColor"></path>
-              <path d="M629.333333 512c0 68.821333-42.24 117.248-98.005333 144.384-54.954667 26.709333-125.696 34.645333-194.474667 24.917333C199.893333 661.888 53.333333 568.149333 53.333333 384a32 32 0 0 1 64 0c0 140.117333 109.397333 217.045333 228.48 233.898667 59.221333 8.405333 116.48 0.853333 157.525334-19.072 40.234667-19.541333 61.994667-48.981333 61.994666-86.826667a32 32 0 0 1 64 0z" fill="currentColor"></path>
-            </svg>
-          </button>
-        </div>
-
-        {/* Right Settings & User */}
-        <div className="flex items-center space-x-4">
-           {/* Usage Stats (New Feature) */}
-           {project && (
-              <div className="relative" ref={usageStatsRef}>
-                 <button 
-                    onClick={() => setShowUsageStats(!showUsageStats)}
-                    className="flex items-center space-x-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-full transition-all group"
-                 >
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-xs font-mono text-slate-400 group-hover:text-slate-200">¥ 12.50</span>
-                 </button>
-                 
-                 {showUsageStats && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-3 animate-scale-in origin-top-right z-50 flex flex-col gap-2">
-                       <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-500">Token 消耗</span>
-                          <span className="text-slate-300 font-mono">15,230</span>
-                       </div>
-                       <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-500">图片消耗</span>
-                          <span className="text-slate-300 font-mono">128 张</span>
-                       </div>
-                       <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-500">视频消耗</span>
-                          <span className="text-slate-300 font-mono">12 分钟</span>
-                       </div>
-                       <div className="h-px bg-slate-800 my-1"></div>
-                       <div className="flex justify-between items-center text-xs font-bold">
-                          <span className="text-slate-400">总计</span>
-                          <span className="text-green-400 font-mono">¥ 12.50</span>
-                       </div>
-                    </div>
-                 )}
-              </div>
-           )}
-
-           {project && (
-             <div className="hidden xl:flex items-center space-x-2 text-xs text-slate-500 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-full">
-                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                <span className="max-w-[120px] truncate">{project.name}</span>
-             </div>
-           )}
-           <button 
-             onClick={() => setIsSettingsOpen(true)}
-             className="p-2.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-full transition-colors"
-             title="全局设置"
-           >
-             <Settings size={22} />
-           </button>
-
-           {/* Theme Switcher (Changed to Click) */}
-           <div className="relative" ref={themeMenuRef}>
-              <button 
-                onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
-                className={`p-2.5 rounded-full transition-colors ${isThemeMenuOpen ? 'text-blue-400 bg-slate-800' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
-                title="切换样式风格"
-              >
-                <Palette size={22} />
-              </button>
-              {/* Dropdown - Click to Show */}
-              {isThemeMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-40 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1 animate-fade-in origin-top-right z-50">
-                   <button onClick={() => { setTheme('light'); setIsThemeMenuOpen(false); }} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'light' ? 'text-blue-400' : 'text-slate-300'}`}>
-                      <Sun size={14} /> 日光模式
+      {/* Header */}
+      <header className={`shrink-0 z-50 border-b border-theme-border transition-all ${isProjectActive ? 'bg-theme-panel' : 'bg-theme-page'} h-18`}>
+        <div className="h-full flex items-center justify-between px-8 gap-4 w-full">
+          
+          <div className="flex items-center gap-4">
+             {isProjectActive ? (
+                <div className="flex items-center gap-4">
+                   <button 
+                    onClick={() => { setProject(null); setCurrentTab(MainTab.PROJECTS); }}
+                    className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                   >
+                      <ChevronLeft size={20} />
                    </button>
-                   <button onClick={() => { setTheme('dark'); setIsThemeMenuOpen(false); }} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'dark' ? 'text-blue-400' : 'text-slate-300'}`}>
-                      <Moon size={14} /> 黑夜模式
-                   </button>
-                   <button onClick={() => { setTheme('camo'); setIsThemeMenuOpen(false); }} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'camo' ? 'text-emerald-400' : 'text-slate-300'}`}>
-                      <Sprout size={14} /> 迷彩风格
-                   </button>
-                   <button onClick={() => { setTheme('purple'); setIsThemeMenuOpen(false); }} className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors ${theme === 'purple' ? 'text-purple-400' : 'text-slate-300'}`}>
-                      <Zap size={14} /> 电光紫
-                   </button>
+                   <h1 className="text-lg font-bold text-slate-100 truncate max-w-[200px]">{project.name}</h1>
                 </div>
-              )}
-           </div>
-
-           {/* User Dropdown */}
-           <div className="relative" ref={userMenuRef}>
-             <button 
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="p-1 rounded-full bg-indigo-600 hover:bg-indigo-500 transition-colors border-2 border-slate-800 hover:border-slate-700 shadow-lg"
-             >
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold bg-indigo-600">
-                   A
-                </div>
-             </button>
-             
-             {showUserMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-scale-in origin-top-right z-50">
-                   <div className="px-4 py-3 border-b border-slate-800">
-                      <p className="text-sm font-bold text-slate-200">Admin</p>
-                      <p className="text-xs text-slate-500 truncate">admin@vidustudio.com</p>
-                   </div>
-                   <div className="p-1">
-                      <button 
-                        onClick={() => { setIsBackendOpen(true); setShowUserMenu(false); }}
-                        className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg flex items-center gap-2 transition-colors"
-                      >
-                         <LayoutDashboard size={16} /> 后台管理
-                      </button>
-                      <button 
-                        onClick={handleChangePassword}
-                        className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg flex items-center gap-2 transition-colors"
-                      >
-                         <KeyRound size={16} /> 修改密码
-                      </button>
-                      <button 
-                        onClick={handleLogout}
-                        className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-slate-800 rounded-lg flex items-center gap-2 transition-colors"
-                      >
-                         <LogOut size={16} /> 退出登录
-                      </button>
-                   </div>
+             ) : (
+                <div 
+                  className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => { setCurrentTab(MainTab.PROJECTS); setProject(null); }}
+                >
+                  <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-1.5 rounded-lg shadow-lg shadow-blue-900/20">
+                     <Terminal className="text-white w-6 h-6" />
+                  </div>
+                  <span className="font-bold text-xl tracking-wide text-slate-200 hidden lg:block">FREELITE</span>
                 </div>
              )}
-           </div>
+          </div>
+
+          <div className="flex-1 flex justify-center">
+             {isProjectActive ? (
+                <div className="flex items-center gap-8">
+                   <div className="flex flex-col items-center group">
+                      <div className={`flex flex-col items-center px-8 py-2 rounded-t-xl border border-b-0 border-theme-border bg-theme-card/10 transition-colors ${currentTab === MainTab.ASSETS ? 'bg-theme-card !border-theme-accent/50' : ''}`}>
+                         <button 
+                          onClick={() => setCurrentTab(MainTab.ASSETS)}
+                          className={`text-sm font-bold transition-colors w-full text-center ${currentTab === MainTab.ASSETS ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                         >
+                            资产管理
+                         </button>
+                         {currentTab === MainTab.ASSETS && (
+                            <div className="flex items-center justify-center gap-3 mt-1 text-[10px] font-bold text-slate-500 whitespace-nowrap">
+                               <span onClick={() => setAssetSubTab(AssetSubTab.EPISODES)} className={`cursor-pointer hover:text-blue-400 ${assetSubTab === AssetSubTab.EPISODES ? 'text-blue-500' : ''}`}>剧集管理</span>
+                               <span className="opacity-20">|</span>
+                               <span onClick={() => setAssetSubTab(AssetSubTab.IMAGES)} className={`cursor-pointer hover:text-blue-400 ${assetSubTab === AssetSubTab.IMAGES ? 'text-blue-500' : ''}`}>图片资产</span>
+                               <span className="opacity-20">|</span>
+                               <span onClick={() => setAssetSubTab(AssetSubTab.TTS)} className={`cursor-pointer hover:text-blue-400 ${assetSubTab === AssetSubTab.TTS ? 'text-blue-500' : ''}`}>TTS配音</span>
+                            </div>
+                         )}
+                      </div>
+                   </div>
+
+                    <div className="flex flex-col items-center group">
+                       <div className={`flex flex-col items-center px-8 py-2 rounded-t-xl border border-b-0 border-theme-border bg-theme-card/10 transition-colors ${currentTab === MainTab.MASTER_LIB ? 'bg-theme-card !border-theme-accent/50' : ''}`}>
+                          <button 
+                           onClick={() => setCurrentTab(MainTab.MASTER_LIB)}
+                           className={`text-sm font-bold transition-colors w-full text-center ${currentTab === MainTab.MASTER_LIB ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                          >
+                             主体库管理
+                          </button>
+                          {currentTab === MainTab.MASTER_LIB && (
+                             <div className="flex items-center justify-center gap-3 mt-1 text-[10px] font-bold text-slate-500 whitespace-nowrap">
+                                <span onClick={() => setMasterLibSubTab(MasterLibSubTab.SEEDANCE)} className={`cursor-pointer hover:text-blue-400 ${masterLibSubTab === MasterLibSubTab.SEEDANCE ? 'text-blue-500' : ''}`}>seedance</span>
+                                <span className="opacity-20">|</span>
+                                <span onClick={() => setMasterLibSubTab(MasterLibSubTab.SPARK)} className={`cursor-pointer hover:text-blue-400 ${masterLibSubTab === MasterLibSubTab.SPARK ? 'text-blue-500' : ''}`}>spark</span>
+                             </div>
+                          )}
+                       </div>
+                    </div>
+                   <button 
+                     onClick={() => setCurrentTab(MainTab.VIDEO)}
+                     className={`text-sm font-bold transition-colors ${currentTab === MainTab.VIDEO ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                   >
+                      视频管理
+                   </button>
+
+                   <div className="flex flex-col items-center group">
+                      <div className={`flex flex-col items-center px-8 py-2 rounded-t-xl border border-b-0 border-theme-border bg-theme-card/10 transition-colors ${currentTab === MainTab.REVIEW ? 'bg-theme-card !border-theme-accent/50' : ''}`}>
+                         <button 
+                          onClick={() => setCurrentTab(MainTab.REVIEW)}
+                          className={`text-sm font-bold transition-colors w-full text-center ${currentTab === MainTab.REVIEW ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                         >
+                            成稿管理
+                         </button>
+                         {currentTab === MainTab.REVIEW && (
+                            <div className="flex items-center justify-center gap-3 mt-1 text-[10px] font-bold text-slate-500 whitespace-nowrap">
+                               <span onClick={() => setReviewSubTab(ReviewSubTab.ONLINE_REVIEW)} className={`cursor-pointer hover:text-blue-400 ${reviewSubTab === ReviewSubTab.ONLINE_REVIEW ? 'text-blue-500' : ''}`}>在线审片</span>
+                               <span className="opacity-20">|</span>
+                               <span onClick={() => setReviewSubTab(ReviewSubTab.FINAL_DELIVERY)} className={`cursor-pointer hover:text-blue-400 ${reviewSubTab === ReviewSubTab.FINAL_DELIVERY ? 'text-blue-500' : ''}`}>成稿交付</span>
+                            </div>
+                         )}
+                      </div>
+                   </div>
+                </div>
+             ) : (
+                <div className="text-slate-500 text-sm font-medium">
+                   请选择一个项目以开始
+                </div>
+             )}
+          </div>
+
+          <div className="flex items-center gap-4">
+             {project && (
+                <>
+                   <div className="flex items-center gap-2 bg-theme-card border border-theme-border/50 px-3 py-1.5 rounded-full shadow-inner">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                      <span className="text-[11px] font-mono text-slate-300">¥ 2.30</span>
+                   </div>
+                   <div className="hidden xl:flex items-center gap-2 bg-theme-page border border-theme-border/50 px-3 py-1.5 rounded-full">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                      <span className="text-[11px] font-bold text-slate-400 truncate max-w-[100px]">{project.name}</span>
+                   </div>
+                </>
+             )}
+             
+             <div className="flex items-center gap-2 relative">
+                <button
+                 className="p-2 text-slate-500 hover:text-blue-400 transition-colors"
+                 onClick={() => setCurrentTab(MainTab.GENERATOR)}
+              >
+                  <svg viewBox="0 0 1024 1024" className="w-5 h-5" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M565.333333 512a53.333333 53.333333 0 1 0-106.666666 0 53.333333 53.333333 0 0 0 106.666666 0z m64 0a117.333333 117.333333 0 1 1-234.666666 0 117.333333 117.333333 0 0 1 234.666666 0z" />
+                      <path d="M512 394.666667c68.821333 0 117.248 42.24 144.384 98.005333 26.709333 54.954667 34.645333 125.696 24.917333 194.474667-19.413333 136.96-113.152 283.52-297.301333 283.52a32 32 0 0 1 0-64c140.117333 0 217.045333-109.397333 233.898667-228.48 8.405333-59.221333 0.853333-116.48-19.072-157.525334-19.541333-40.234667-48.981333-61.994667-86.826667-61.994666a32 32 0 0 1 0-64z" />
+                      <path d="M525.312 629.333333c-68.821333 0-117.290667-42.24-144.384-98.005333-26.752-54.954667-34.688-125.696-24.917333-194.474667 19.370667-136.96 113.152-283.52 297.301333-283.52a32 32 0 0 1 0 64c-140.16 0-217.045333 109.397333-233.941333 228.48-8.362667 59.221333-0.853333 116.48 19.072 157.525334 19.584 40.234667 48.981333 61.994667 86.869333 61.994666a32 32 0 0 1 0 64z" />
+                      <path d="M729.002667 855.210667a32 32 0 0 1 51.968 37.376 315.178667 315.178667 0 0 1-33.194667 38.912 32 32 0 0 1-45.226667-45.226667 251.733333 251.733333 0 0 0 26.453334-31.061333z m38.229333-151.04a32 32 0 0 1 63.573333-7.552 282.325333 282.325333 0 0 1-6.144 102.656 32 32 0 1 1-62.037333-15.616c6.570667-26.026667 7.808-52.821333 4.608-79.488z m-59.690667-195.413334a32 32 0 0 1 44.970667 5.504c20.181333 25.770667 37.717333 54.570667 51.242667 85.248a32 32 0 0 1-58.581334 25.770667 336.341333 336.341333 0 0 0-43.093333-71.552 32 32 0 0 1 5.461333-44.928zM550.4 419.114667a32.042667 32.042667 0 0 1 39.509333-22.101334c31.872 8.96 63.061333 25.6 91.648 47.104a32.042667 32.042667 0 0 1-38.528 51.2c-23.552-17.792-47.701333-30.250667-70.485333-36.693333a32.042667 32.042667 0 0 1-22.144-39.509333z m-119.381333 14.634666c14.378667-14.378667 30.506667-25.173333 47.957333-32.554666a32 32 0 0 1 24.874667 58.965333 86.058667 86.058667 0 0 0-27.562667 18.816 32 32 0 1 1-45.226667-45.226667zM308.266667 168.789333a32 32 0 0 1-51.968-37.376c9.642667-13.397333 20.693333-26.410667 33.237333-38.912a32 32 0 0 1 45.226667 45.226667 251.648 251.648 0 0 0-26.453334 31.061333z m-38.229334 151.04a32 32 0 0 1-63.573333 7.552 282.282667 282.282667 0 0 1 6.144-102.656 32 32 0 1 1 62.08 15.616 218.368 218.368 0 0 0-4.650667 79.445334z m59.733334 195.413334a32 32 0 0 1-44.970667-5.504A400.341333 400.341333 0 0 1 233.557333 424.533333a32 32 0 0 1 58.581334-25.770667 336.298667 336.298667 0 0 0 43.050666 71.552 32 32 0 0 1-5.461333 44.928z m157.141333 89.685333a32 32 0 0 1-39.509333 22.101333c-31.872-8.96-63.061333-25.6-91.605334-47.104a32.042667 32.042667 0 0 1 38.528-51.2c23.509333 17.792 47.658667 30.250667 70.442667 36.693334a32.042667 32.042667 0 0 1 22.186667 39.509333z m119.381333-14.634667c-14.336 14.378667-30.506667 25.173333-47.914666 32.554667a32 32 0 0 1-24.874667-58.965333c9.557333-4.053333 18.816-10.112 27.562667-18.816a32 32 0 0 1 45.226666 45.226666z" />
+                      <path d="M861.866667 301.610667a32 32 0 0 1 37.376-51.968c13.397333 9.642667 26.410667 20.693333 38.912 33.194666a32 32 0 1 1-45.226667 45.226667 251.52 251.52 0 0 0-31.018667-26.453333z m-151.04-38.272a32 32 0 0 1-7.552-63.573334 282.282667 282.282667 0 0 1 102.656 6.186667 32 32 0 1 1-15.616 62.037333 218.368 218.368 0 0 0-79.445334-4.650666z m-195.370667 59.733333a32 32 0 0 1 5.461333-44.970667 400.426667 400.426667 0 0 1 85.248-51.242666 32 32 0 0 1 25.770667 58.581333 336.512 336.512 0 0 0-71.552 43.093333 32 32 0 0 1-44.928-5.504zM425.813333 480.170667a32.042667 32.042667 0 0 1-22.186666-39.509334c9.045333-31.829333 25.6-63.061333 47.189333-91.605333a32.042667 32.042667 0 0 1 51.157333 38.528c-17.749333 23.552-30.250667 47.701333-36.693333 70.485333a32 32 0 0 1-39.466667 22.101334z m14.592 119.381333a150.058667 150.058667 0 0 1-32.554666-47.914667 32 32 0 0 1 58.965333-24.874666c4.053333 9.6 10.154667 18.858667 18.858667 27.562666a32 32 0 1 1-45.269334 45.226667zM175.402667 722.389333a32 32 0 0 1-37.376 51.968 315.562667 315.562667 0 0 1-38.912-33.194666 32 32 0 0 1 45.226666-45.226667 251.733333 251.733333 0 0 0 31.061334 26.453333z m151.04 38.272a32 32 0 0 1 7.552 63.573334 282.197333 282.197333 0 0 1-102.656-6.186667 32 32 0 1 1 15.616-62.037333c26.026667 6.570667 52.821333 7.808 79.488 4.650666z m195.413333-59.733333a32 32 0 0 1-5.461333 44.970667 400.213333 400.213333 0 0 1-85.290667 51.242666 32 32 0 0 1-25.770667-58.581333 336.256 336.256 0 0 0 71.552-43.093333 32 32 0 0 1 44.928 5.504z m89.685333-157.141333a32.042667 32.042667 0 0 1 22.144 39.509333c-9.002667 31.829333-25.6 63.061333-47.146666 91.605333a32.042667 32.042667 0 0 1-51.157334-38.528c17.749333-23.552 30.208-47.701333 36.650667-70.485333a32.042667 32.042667 0 0 1 39.509333-22.101333z m-14.592-119.381334c14.336 14.336 25.173333 30.464 32.554667 47.914667a32 32 0 0 1-59.008 24.874667 86.144 86.144 0 0 0-18.816-27.562667 32 32 0 1 1 45.226667-45.226667z" />
+                      <path d="M394.666667 525.354667c0-68.821333 42.24-117.290667 98.005333-144.384 54.954667-26.752 125.696-34.688 194.474667-24.917334 136.96 19.370667 283.52 113.152 283.52 297.258667a32 32 0 0 1-64 0c0-140.117333-109.397333-217.002667-228.48-233.898667-59.221333-8.362667-116.48-0.853333-157.525334 19.072-40.234667 19.584-61.994667 48.981333-61.994666 86.869334a32 32 0 0 1-64 0z" />
+                      <path d="M629.333333 512c0 68.821333-42.24 117.248-98.005333 144.384-54.954667 26.709333-125.696 34.645333-194.474667 24.917333C199.893333 661.888 53.333333 568.149333 53.333333 384a32 32 0 0 1 64 0c0 140.117333 109.397333 217.045333 228.48 233.898667 59.221333 8.405333 116.48 0.853333 157.525334-19.072 40.234667-19.541333 61.994667-48.981333 61.994666-86.826667a32 32 0 0 1 64 0z" />
+                  </svg>
+              </button>
+
+                <button 
+                  onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
+                  className={`p-2 transition-colors rounded-lg ${isThemeMenuOpen ? 'bg-slate-800 text-blue-400' : 'text-slate-500 hover:text-blue-400'}`}
+                >
+                  <Palette size={18} />
+                </button>
+
+                {isThemeMenuOpen && (
+                  <div 
+                    ref={themeMenuRef}
+                    className="absolute top-full right-0 mt-3 w-48 bg-theme-card border border-theme-border rounded-2xl shadow-2xl overflow-hidden z-[70] animate-scale-in origin-top-right py-2"
+                  >
+                    {[
+                      { id: 'light', label: '日光模式', icon: Sun },
+                      { id: 'dark', label: '黑夜模式', icon: Moon },
+                      { id: 'camo', label: '迷彩风格', icon: Sprout },
+                      { id: 'morandi', label: '莫兰迪风', icon: Cloud },
+                      { id: 'flat', label: '扁平化风格', icon: LayoutGrid },
+                      { id: 'retro', label: '复古风', icon: Disc },
+                    ].map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => {
+                          setTheme(t.id as ThemeOption);
+                          setIsThemeMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all hover:bg-white/5 ${theme === t.id ? 'text-blue-400 font-bold' : 'text-slate-400'}`}
+                      >
+                        <t.icon size={16} />
+                        <span>{t.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+             </div>
+
+             <button 
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-800 hover:border-blue-500 transition-all shadow-lg"
+             >
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" />
+             </button>
+          </div>
         </div>
       </header>
 
-      {/* 3. Main Content Area */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-8 relative bg-grid-pattern">
-        {renderContent()}
+      <main className={`flex-1 overflow-hidden transition-all ${isProjectActive ? 'bg-theme-page' : 'bg-theme-panel'}`}>
+        <div className="h-full w-full">
+           {renderContent()}
+        </div>
       </main>
 
-      {/* 4. Global Settings Modal */}
+      {showUserMenu && (
+        <div 
+          ref={userMenuRef}
+          className="fixed top-16 right-4 w-56 bg-theme-card border border-theme-border rounded-2xl shadow-2xl overflow-hidden z-[60] animate-scale-in origin-top-right py-2 px-1"
+        >
+          <div className="px-4 py-3 border-b border-slate-800/50 mb-1">
+             <p className="text-sm font-bold text-white leading-none mb-1">Admin</p>
+             <p className="text-[10px] text-slate-500">admin@vidustudio.com</p>
+          </div>
+          <button 
+            onClick={() => { setIsPersonalCenterOpen(true); setShowUserMenu(false); }}
+            className="w-full text-left px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg flex items-center gap-2 transition-colors"
+          >
+             <User size={16} /> 个人中心
+          </button>
+          <button 
+            onClick={() => { setIsBackendOpen(true); setShowUserMenu(false); }}
+            className="w-full text-left px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg flex items-center gap-2 transition-colors"
+          >
+             <LayoutDashboard size={16} /> 后台管理
+          </button>
+          <button 
+            onClick={handleLogout}
+            className="w-full text-left px-4 py-2 text-sm text-red-400 hover:text-white hover:bg-red-600/20 rounded-lg flex items-center gap-2 transition-colors"
+          >
+             <LogOut size={16} /> 退出登录
+          </button>
+        </div>
+      )}
+
       <GlobalSettings 
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)}
         currentSettings={globalSettings}
         onSave={handleSettingsSave}
       />
-      
     </div>
   );
 };

@@ -28,21 +28,25 @@ import {
   ChevronDown,
   List,
   BarChart3,
-  Calendar,
   ArrowDownUp,
   Eye,
   FolderOpen,
-  UserPlus
+  UserPlus,
+  Download,
+  ChevronLeft,
+  RefreshCw
 } from 'lucide-react';
+import { DatePicker } from '@douyinfe/semi-ui';
+import '@douyinfe/semi-ui/dist/css/semi.css';
 
 import { Project, ProjectGroup, UserAccount, Role } from '../types';
 
 interface BackendManagementProps {
   onExit: () => void;
   groups: ProjectGroup[];
-  setGroups: (groups: ProjectGroup[]) => void;
+  setGroups: React.Dispatch<React.SetStateAction<ProjectGroup[]>>;
   users: UserAccount[];
-  setUsers: (users: UserAccount[]) => void;
+  setUsers: React.Dispatch<React.SetStateAction<UserAccount[]>>;
   projects: Project[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
 }
@@ -451,13 +455,21 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
   // --- Usage Stats State ---
   const [usageFilterType, setUsageFilterType] = useState<'INDIVIDUAL' | 'GROUP'>('INDIVIDUAL');
   const [usageSortOrder, setUsageSortOrder] = useState<'ASC' | 'DESC'>('DESC');
-  const [usageDateRange, setUsageDateRange] = useState({ start: '', end: '' });
+  const [usageDateRange, setUsageDateRange] = useState({ 
+    start: '2026-04-06', 
+    end: '2026-04-07',
+  });
+  const [usernameFilter, setUsernameFilter] = useState('');
+  const [realNameFilter, setRealNameFilter] = useState('');
+  const [statsTimeType, setStatsTimeType] = useState('自定义');
 
   const MOCK_USAGE_INDIVIDUAL = [
-    { id: '1', name: '张三', group: '设计A组', generations: 120, tokens: 450000, cost: 12.5 },
-    { id: '2', name: '李四', group: '设计B组', generations: 85, tokens: 320000, cost: 8.9 },
-    { id: '3', name: '王五', group: '设计A组', generations: 210, tokens: 890000, cost: 24.5 },
-    { id: '4', name: '赵六', group: '开发组', generations: 45, tokens: 150000, cost: 4.2 },
+    { id: '1', username: 'zhangsan', realName: '张三', totalTasks: 22, success: 21, failed: 1, rate: '95.45%', tokens: 3863700, cost: 169.9380, videoDuration: '2分49秒', totalTime: '87分42秒', date: '2026-04-06' },
+    { id: '2', username: 'lisi', realName: '李四', totalTasks: 12, success: 11, failed: 1, rate: '91.67%', tokens: 2969100, cost: 136.5786, videoDuration: '2分17秒', totalTime: '55分41秒', date: '2026-04-06' },
+    { id: '3', username: 'wangwu', realName: '王五', totalTasks: 7, success: 7, failed: 0, rate: '100.00%', tokens: 2274300, cost: 104.6178, videoDuration: '1分45秒', totalTime: '38分16秒', date: '2026-04-06' },
+    { id: '4', username: 'zhaoliu', realName: '赵六', totalTasks: 6, success: 6, failed: 0, rate: '100.00%', tokens: 1949400, cost: 89.6724, videoDuration: '1分30秒', totalTime: '29分10秒', date: '2026-04-06' },
+    { id: '5', username: 'sunqi', realName: '孙七', totalTasks: 6, success: 6, failed: 0, rate: '100.00%', tokens: 1171800, cost: 48.4434, videoDuration: '48秒', totalTime: '26分44秒', date: '2026-04-06' },
+    { id: '6', username: 'zhouba', realName: '周八', totalTasks: 2, success: 2, failed: 0, rate: '100.00%', tokens: 325800, cost: 14.9868, videoDuration: '15秒', totalTime: '8分13秒', date: '2026-04-06' },
   ];
 
   const MOCK_USAGE_GROUP = [
@@ -1300,95 +1312,166 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
             {/* USAGE_STATS: 消耗统计 */}
             {activeTab === 'USAGE_STATS' && (
                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in flex flex-col h-full">
+                  {/* Header */}
                   <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
-                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                           <Filter size={16} className="text-slate-400" />
-                           <select 
-                              value={usageFilterType}
-                              onChange={(e) => setUsageFilterType(e.target.value as 'INDIVIDUAL' | 'GROUP')}
-                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500"
-                           >
-                              <option value="INDIVIDUAL">按照个人消耗统计</option>
-                              <option value="GROUP">按照小组消耗统计</option>
-                           </select>
-                        </div>
-                        <div className="flex items-center gap-2">
-                           <ArrowDownUp size={16} className="text-slate-400" />
-                           <select 
-                              value={usageSortOrder}
-                              onChange={(e) => setUsageSortOrder(e.target.value as 'ASC' | 'DESC')}
-                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500"
-                           >
-                              <option value="DESC">降序</option>
-                              <option value="ASC">升序</option>
-                           </select>
-                        </div>
-                     </div>
-                     <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-slate-400" />
-                        <div className="flex items-center gap-2">
-                           <input 
-                              type="date" 
-                              value={usageDateRange.start}
-                              onChange={(e) => setUsageDateRange({...usageDateRange, start: e.target.value})}
-                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500"
-                           />
-                           <span className="text-slate-400">-</span>
-                           <input 
-                              type="date" 
-                              value={usageDateRange.end}
-                              onChange={(e) => setUsageDateRange({...usageDateRange, end: e.target.value})}
-                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500"
-                           />
-                        </div>
-                     </div>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white">Seedance 数据统计</h3>
+                    <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-500/20">
+                      <RefreshCw size={16} /> 手动触发统计
+                    </button>
                   </div>
 
-                  <div className="flex-1 overflow-auto">
-                     <div className="min-w-[800px]">
-                        {usageFilterType === 'INDIVIDUAL' ? (
-                           <>
-                              <div className="grid grid-cols-5 gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider sticky top-0 backdrop-blur-sm z-10">
-                                 <div>姓名</div>
-                                 <div>所属小组</div>
-                                 <div className="text-right">生成次数</div>
-                                 <div className="text-right">消耗 Token</div>
-                                 <div className="text-right">消耗费用 (¥)</div>
-                              </div>
-                              {sortedIndividual.map((item) => (
-                                 <div key={item.id} className="grid grid-cols-5 gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors items-center text-sm text-slate-700 dark:text-slate-300">
-                                    <div className="font-medium">{item.name}</div>
-                                    <div>
-                                       <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs">{item.group}</span>
-                                    </div>
-                                    <div className="text-right font-mono">{item.generations.toLocaleString()}</div>
-                                    <div className="text-right font-mono text-slate-500">{item.tokens.toLocaleString()}</div>
-                                    <div className="text-right font-mono font-bold text-green-600 dark:text-green-400">{item.cost.toFixed(2)}</div>
-                                 </div>
-                              ))}
-                           </>
-                        ) : (
-                           <>
-                              <div className="grid grid-cols-4 gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider sticky top-0 backdrop-blur-sm z-10">
-                                 <div>小组名</div>
-                                 <div className="text-right">生成次数</div>
-                                 <div className="text-right">消耗 Token</div>
-                                 <div className="text-right">消耗费用 (¥)</div>
-                              </div>
-                              {sortedGroup.map((item) => (
-                                 <div key={item.id} className="grid grid-cols-4 gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors items-center text-sm text-slate-700 dark:text-slate-300">
-                                    <div className="font-medium">
-                                       <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-2 py-1 rounded border border-blue-200 dark:border-blue-800/50">{item.group}</span>
-                                    </div>
-                                    <div className="text-right font-mono">{item.generations.toLocaleString()}</div>
-                                    <div className="text-right font-mono text-slate-500">{item.tokens.toLocaleString()}</div>
-                                    <div className="text-right font-mono font-bold text-green-600 dark:text-green-400">{item.cost.toFixed(2)}</div>
-                                 </div>
-                              ))}
-                           </>
-                        )}
-                     </div>
+                  {/* Filter Bar */}
+                  <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-6 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500">统计时间:</span>
+                      <select 
+                        value={statsTimeType}
+                        onChange={(e) => setStatsTimeType(e.target.value)}
+                        className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 min-w-[100px]"
+                      >
+                        <option value="自定义">自定义</option>
+                        <option value="今天">今天</option>
+                        <option value="昨天">昨天</option>
+                        <option value="最近7天">最近7天</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500">用户名:</span>
+                      <input 
+                        type="text"
+                        placeholder="支持模糊查询"
+                        value={usernameFilter}
+                        onChange={(e) => setUsernameFilter(e.target.value)}
+                        className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 w-40"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500">真实姓名:</span>
+                      <input 
+                        type="text"
+                        placeholder="支持模糊查询"
+                        value={realNameFilter}
+                        onChange={(e) => setRealNameFilter(e.target.value)}
+                        className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 w-40"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-500 mr-1">*</span>
+                      <span className="text-slate-500">日期范围:</span>
+                      <DatePicker 
+                        type="dateRange" 
+                        density="compact" 
+                        style={{ width: 260 }} 
+                        value={[usageDateRange.start, usageDateRange.end]}
+                        onChange={(date, dateString) => {
+                          if (Array.isArray(dateString) && dateString.length === 2) {
+                            setUsageDateRange({
+                              start: dateString[0] as string,
+                              end: dateString[1] as string
+                            });
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-3 ml-auto">
+                      <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                        <Search size={16} /> 查询
+                      </button>
+                      <button className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                        <Download size={16} /> 导出
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Table Area */}
+                  <div className="flex-1 overflow-auto p-5">
+                    <div className="min-w-[1200px] border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+                      <table className="w-full text-sm text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400">
+                            <th className="px-4 py-3 font-medium">用户名</th>
+                            <th className="px-4 py-3 font-medium">真实姓名</th>
+                            <th className="px-4 py-3 font-medium">
+                              <div className="flex items-center gap-1">总任务数 <ArrowDownUp size={12} /></div>
+                            </th>
+                            <th className="px-4 py-3 font-medium">
+                              <div className="flex items-center gap-1">成功数 <ArrowDownUp size={12} /></div>
+                            </th>
+                            <th className="px-4 py-3 font-medium">失败数</th>
+                            <th className="px-4 py-3 font-medium">
+                              <div className="flex items-center gap-1">成功率 <ArrowDownUp size={12} /></div>
+                            </th>
+                            <th className="px-4 py-3 font-medium">
+                              <div className="flex items-center gap-1">Token消耗 <ArrowDownUp size={12} /></div>
+                            </th>
+                            <th className="px-4 py-3 font-medium">
+                              <div className="flex items-center gap-1">费用消耗 (元) <ArrowDownUp size={12} /></div>
+                            </th>
+                            <th className="px-4 py-3 font-medium">
+                              <div className="flex items-center gap-1">视频时长 <ArrowDownUp size={12} /></div>
+                            </th>
+                            <th className="px-4 py-3 font-medium">
+                              <div className="flex items-center gap-1">总消耗时间 <ArrowDownUp size={12} /></div>
+                            </th>
+                            <th className="px-4 py-3 font-medium">日期</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                          {sortedIndividual.map((item) => (
+                            <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors text-slate-700 dark:text-slate-300">
+                              <td className="px-4 py-4">{item.username}</td>
+                              <td className="px-4 py-4">{item.realName}</td>
+                              <td className="px-4 py-4">{item.totalTasks}</td>
+                              <td className="px-4 py-4 text-green-600 dark:text-green-400">{item.success}</td>
+                              <td className="px-4 py-4 text-red-500">{item.failed}</td>
+                              <td className="px-4 py-4">{item.rate}</td>
+                              <td className="px-4 py-4">{item.tokens.toLocaleString()}</td>
+                              <td className="px-4 py-4">¥ {item.cost.toFixed(4)}</td>
+                              <td className="px-4 py-4">{item.videoDuration}</td>
+                              <td className="px-4 py-4">{item.totalTime}</td>
+                              <td className="px-4 py-4 text-xs text-slate-500">{item.date}</td>
+                            </tr>
+                          ))}
+                          {/* Total Row */}
+                          <tr className="bg-slate-50/50 dark:bg-slate-800/20 font-bold text-slate-900 dark:text-white">
+                            <td className="px-4 py-4" colSpan={2}>本页合计</td>
+                            <td className="px-4 py-4"></td>
+                            <td className="px-4 py-4"></td>
+                            <td className="px-4 py-4"></td>
+                            <td className="px-4 py-4">96.36%</td>
+                            <td className="px-4 py-4">12,554,100</td>
+                            <td className="px-4 py-4">¥ 564.2370</td>
+                            <td className="px-4 py-4">9分24秒</td>
+                            <td className="px-4 py-4">245分48秒</td>
+                            <td className="px-4 py-4"></td>
+                            <td className="px-4 py-4"></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination */}
+                    <div className="mt-6 flex items-center justify-end gap-4 text-sm text-slate-500">
+                      <span>共 6 条</span>
+                      <div className="flex items-center gap-1">
+                        <button className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors disabled:opacity-30" disabled>
+                          <ChevronLeft size={16} />
+                        </button>
+                        <button className="w-8 h-8 flex items-center justify-center bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded">1</button>
+                        <button className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors disabled:opacity-30" disabled>
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                      <select className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 focus:outline-none">
+                        <option>10 / page</option>
+                        <option>20 / page</option>
+                        <option>50 / page</option>
+                      </select>
+                    </div>
                   </div>
                </div>
             )}

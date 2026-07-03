@@ -12,10 +12,18 @@
     "deploy": "gh-pages -t -d dist"
   },
   "dependencies": {
+    "@douyinfe/semi-icons": "^2.101.0",
+    "@douyinfe/semi-illustrations": "^2.101.0",
+    "@douyinfe/semi-ui": "^2.101.0",
     "@google/genai": "^1.38.0",
+    "@tailwindcss/vite": "^4.3.2",
+    "framer-motion": "^12.42.2",
     "lucide-react": "^0.563.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-datepicker": "^9.1.0",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.18.1",
+    "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

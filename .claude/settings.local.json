@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find E:/workspace/VSC/ai-video-workflow-studio -type f \\\\\\(-iname README* -o -name *.md -o -name CHANGELOG* -o -name CONTRIBUTING* \\\\\\))",
+      "Bash(find E:/workspace/VSC/ai-video-workflow-studio -type f \\\\\\(-iname README* -o -name *.md \\\\\\) ! -path */node_modules/*)"
+    ]
+  }
+}

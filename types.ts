@@ -3,7 +3,8 @@ export enum MainTab {
   ASSETS = 'ASSETS',
   MASTER_LIB = 'MASTER_LIB',
   VIDEO = 'VIDEO',
-  EDITOR = 'EDITOR'
+  REVIEW = 'REVIEW',
+  GENERATOR = 'GENERATOR'
 }
 
 export enum WorkflowStage {
@@ -23,6 +24,16 @@ export enum AssetSubTab {
 export enum VideoSubTab {
   VIDU = 'VIDU',
   SEEDANCE = 'SEEDANCE'
+}
+
+export enum ReviewSubTab {
+  ONLINE_REVIEW = 'ONLINE_REVIEW',
+  FINAL_DELIVERY = 'FINAL_DELIVERY'
+}
+
+export enum MasterLibSubTab {
+  SEEDANCE = 'SEEDANCE',
+  SPARK = 'SPARK'
 }
 
 export interface ProjectGroup {
@@ -144,6 +155,21 @@ export interface AgentSettings {
   model: string;
   prompt: string;
   enabled?: boolean; // 开关状态
+}
+
+export interface ReviewItem {
+  id: string;
+  name: string;
+  type: 'FILE' | 'FOLDER';
+  fileType?: 'VIDEO' | 'AUDIO' | 'IMAGE' | 'OTHER';
+  size?: number;
+  duration?: string;
+  version?: string;
+  versions?: string[];
+  thumbnailUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+  parentId?: string; // For folder structure
 }
 
 export interface AppState {

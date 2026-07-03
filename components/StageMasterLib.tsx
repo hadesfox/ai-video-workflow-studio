@@ -4,6 +4,8 @@ import { Database, ArrowRight, Trash2, Search, CloudUpload, X, Edit2, Save, More
 
 interface StageMasterLibProps {
   assets: Asset[];
+  setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
+  onNext: () => void;
 }
 
 // 定义主体库条目的独立接口
@@ -18,7 +20,7 @@ interface MasterItem {
   createdAt: number;
 }
 
-const StageMasterLib: React.FC<StageMasterLibProps> = ({ assets }) => {
+const StageMasterLib: React.FC<StageMasterLibProps> = ({ assets, setAssets, onNext }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   

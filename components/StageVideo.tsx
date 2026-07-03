@@ -1,6 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab } from '../types';
-import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText } from 'lucide-react';
+import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText, Upload, Trash2 } from 'lucide-react';
+
+const InsertUpIcon = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 3v6" />
+    <path d="M9 6h6" />
+    <path d="M6 15v-3h12v3" />
+  </svg>
+);
+
+const InsertDownIcon = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M6 9v3h12V9" />
+    <path d="M12 15v6" />
+    <path d="M9 18h6" />
+  </svg>
+);
 
 interface StageVideoProps {
   episodes: Episode[];
@@ -62,6 +78,7 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
 
   // Prompt Editing State
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Get active episode data
   const activeEpisode = episodes.find(e => e.id === activeEpisodeId);
@@ -335,6 +352,34 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
            shots: ep.shots.map(s => s.id === shotId ? { ...s, description: newText } : s)
         };
      }));
+  };
+
+  const handleInsertShot = (index: number) => {
+      const activeEpisode = episodes.find(ep => ep.id === activeEpisodeId);
+      if (!activeEpisode) return;
+      const newShot: ExtendedShot = {
+          id: `shot-${Date.now()}`,
+          description: "新插入的分镜提示词",
+          duration: 5,
+          status: 'PENDING',
+          videoUrl: '',
+          videoVersions: []
+      };
+      const newShots = [...activeEpisode.shots];
+      newShots.splice(index, 0, newShot);
+      setEpisodes(episodes.map(ep => 
+          ep.id === activeEpisodeId ? { ...ep, shots: newShots } : ep
+      ));
+  };
+
+  const handleDeleteShot = (shotId: string) => {
+      const activeEpisode = episodes.find(ep => ep.id === activeEpisodeId);
+      if (!activeEpisode) return;
+      const newShots = activeEpisode.shots.filter(s => s.id !== shotId);
+      setEpisodes(episodes.map(ep => 
+          ep.id === activeEpisodeId ? { ...ep, shots: newShots } : ep
+      ));
+      setDeleteConfirmId(null);
   };
 
   const markAsViewed = (shotId: string) => {
@@ -714,7 +759,7 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                     </button>
                 </div>
                 ) : (
-                <div className="grid grid-cols-1 gap-6 max-w-5xl mx-auto pb-20">
+                <div className="grid grid-cols-1 gap-6 pb-20 pt-6">
                     {activeEpisode.shots.map((shot, index) => {
                         const linkedAssets = extractAssetsFromPrompt(shot.description);
                         const isVideoGenerating = videoGeneratingMap[shot.id];
@@ -734,9 +779,9 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                         const isEditing = editingShotId === shot.id;
 
                         return (
+                            <div key={shot.id} className="relative flex flex-col">
                             <div 
                             id={`shot-card-${shot.id}`}
-                            key={shot.id} 
                             className={`bg-slate-900 border rounded-xl overflow-hidden flex flex-col md:flex-row group transition-colors shadow-sm ${isErrorState ? 'border-red-500/50' : 'border-slate-800 hover:border-slate-600'}`}
                             >
                             
@@ -968,6 +1013,54 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                                         </div>
                                     )}
                                 </div>
+
+                            </div>
+
+                            {/* Vertical Action Bar */}
+                            <div className="w-full md:w-12 border-t md:border-t-0 md:border-l border-slate-800/50 bg-slate-900/50 flex flex-row md:flex-col items-center justify-between py-2 md:py-4 shrink-0">
+                                <button 
+                                    onClick={() => handleInsertShot(index)}
+                                    className="text-slate-500 hover:text-indigo-400 p-2 rounded-lg hover:bg-slate-800 transition-colors"
+                                    title="向上插入分镜"
+                                >
+                                    <InsertUpIcon size={16} />
+                                </button>
+                                
+                                {deleteConfirmId === shot.id ? (
+                                    <div className="flex flex-row md:flex-col items-center gap-2">
+                                        <button 
+                                            onClick={() => handleDeleteShot(shot.id)}
+                                            className="text-red-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+                                            title="确认删除"
+                                        >
+                                            <CheckCircle2 size={16} />
+                                        </button>
+                                        <button 
+                                            onClick={() => setDeleteConfirmId(null)}
+                                            className="text-slate-500 hover:text-slate-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                                            title="取消"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button 
+                                        onClick={() => setDeleteConfirmId(shot.id)}
+                                        className="text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-slate-800 transition-colors"
+                                        title="删除分镜"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
+
+                                <button 
+                                    onClick={() => handleInsertShot(index + 1)}
+                                    className="text-slate-500 hover:text-indigo-400 p-2 rounded-lg hover:bg-slate-800 transition-colors"
+                                    title="向下插入分镜"
+                                >
+                                    <InsertDownIcon size={16} />
+                                </button>
+                            </div>
 
                             </div>
                             </div>
