@@ -4,6 +4,7 @@ export enum MainTab {
   MASTER_LIB = 'MASTER_LIB',
   VIDEO = 'VIDEO',
   REVIEW = 'REVIEW',
+  PARTNER = 'PARTNER',
   GENERATOR = 'GENERATOR'
 }
 
@@ -178,4 +179,83 @@ export interface AppState {
   project: Project | null;
   assets: Asset[];
   shots: Shot[];
+}
+
+// ==================== 外发协作模块 ====================
+
+export enum PartnerSubTab {
+  TASK_LIST = 'TASK_LIST',
+  NEW_TASK = 'NEW_TASK',
+  TASK_DETAIL = 'TASK_DETAIL'
+}
+
+export enum PartnerExternalSubTab {
+  MY_TASKS = 'MY_TASKS',
+  DOWNLOAD = 'DOWNLOAD',
+  DELIVER = 'DELIVER',
+  FEEDBACK = 'FEEDBACK'
+}
+
+export type PartnerTaskStatus =
+  | 'draft'        // 草稿（从视频管理创建，待填写详情）
+  | 'pending'      // 待发布
+  | 'published'    // 已下发
+  | 'delivered'    // 已交付
+  | 'reviewing'    // 审片中
+  | 'approved'     // 已通过
+  | 'rejected';    // 已打回
+
+export interface PartnerAssetItem {
+  id: string;
+  name: string;
+  size: string;
+  resolution: string;
+  duration: string;
+  thumbnail?: string;
+}
+
+export interface PartnerDeliveryVersion {
+  version: number;
+  videoName: string;
+  fileSize: string;
+  uploadTime: string;
+  notes: string;
+  status: 'pending_review' | 'approved' | 'rejected';
+  reviewComments?: ReviewComment[];
+}
+
+export interface ReviewComment {
+  id: string;
+  timestamp: string;   // 时间码
+  author: string;
+  content: string;
+  type: 'approve' | 'reject' | 'comment';
+}
+
+export interface PartnerTask {
+  id: string;
+  name: string;
+  projectId: string;
+  projectName: string;
+  brief: string;
+  deadline: string;
+  status: PartnerTaskStatus;
+  externalUserId: string;
+  externalCompanyName: string;
+  externalContactName: string;
+  assets: PartnerAssetItem[];
+  deliveries: PartnerDeliveryVersion[];
+  createdAt: string;
+  publishedAt?: string;
+  completedAt?: string;
+}
+
+export interface ExternalUser {
+  id: string;
+  companyName: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  status: 'active' | 'disabled';
+  taskCount: number;
 }

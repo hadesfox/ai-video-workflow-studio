@@ -10,7 +10,8 @@ import GlobalSettings from './components/GlobalSettings';
 import FormPage from './components/FormPage';
 import BackendManagement from './components/BackendManagement';
 import PersonalCenter from './components/PersonalCenter';
-import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap, LayoutDashboard, UserCircle, ChevronLeft, RefreshCw, Cloud, LayoutGrid, Disc } from 'lucide-react';
+import PartnerCollaboration from './components/PartnerCollaboration';
+import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap, LayoutDashboard, UserCircle, ChevronLeft, RefreshCw, Cloud, LayoutGrid, Disc, Users2 } from 'lucide-react';
 
 // Default Settings Helper
 const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
@@ -160,6 +161,7 @@ const App: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false); 
   
   const [hasVisitedVideo, setHasVisitedVideo] = useState(false);
+  const [isExternalView, setIsExternalView] = useState(false);
 
   // --- Shared Data State ---
   const [groups, setGroups] = useState<ProjectGroup[]>([
@@ -247,6 +249,17 @@ const App: React.FC = () => {
       return <FormPage onBack={() => setIsFormOpen(false)} />;
     }
 
+    // External view always renders PartnerCollaboration regardless of tab
+    if (isExternalView && project) {
+      return (
+        <PartnerCollaboration
+          project={project}
+          isExternal={isExternalView}
+          onToggleExternal={() => setIsExternalView(!isExternalView)}
+        />
+      );
+    }
+
     switch (currentTab) {
       case MainTab.PROJECTS:
         return (
@@ -298,6 +311,14 @@ const App: React.FC = () => {
         );
       case MainTab.REVIEW:
         return <OnlineReview clips={editorClips} subTab={reviewSubTab} />;
+      case MainTab.PARTNER:
+        return (
+          <PartnerCollaboration
+            project={project}
+            isExternal={isExternalView}
+            onToggleExternal={() => setIsExternalView(!isExternalView)}
+          />
+        );
       case MainTab.GENERATOR:
         return <VideoGenerator />;
       default:
@@ -368,6 +389,14 @@ const App: React.FC = () => {
 
           <div className="flex-1 flex justify-center">
              {isProjectActive ? (
+                isExternalView ? (
+                   <div className="flex items-center gap-3">
+                      <div className="bg-orange-500/10 border border-orange-500/20 px-4 py-2 rounded-lg flex items-center gap-2">
+                         <Users2 size={16} className="text-orange-400" />
+                         <span className="text-sm font-bold text-orange-400">外发协作 · 工作台</span>
+                      </div>
+                   </div>
+                ) : (
                 <div className="flex items-center gap-8">
                    <div className="flex flex-col items-center group">
                       <div className={`flex flex-col items-center px-8 py-2 rounded-t-xl border border-b-0 border-theme-border bg-theme-card/10 transition-colors ${currentTab === MainTab.ASSETS ? 'bg-theme-card !border-theme-accent/50' : ''}`}>
@@ -430,7 +459,16 @@ const App: React.FC = () => {
                          )}
                       </div>
                    </div>
+
+                   <button
+                     onClick={() => setCurrentTab(MainTab.PARTNER)}
+                     className={`text-sm font-bold transition-colors flex items-center gap-1.5 ${currentTab === MainTab.PARTNER ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                   >
+                      <Users2 size={15} />
+                      外发协作
+                   </button>
                 </div>
+                )
              ) : (
                 <div className="text-slate-500 text-sm font-medium">
                    请选择一个项目以开始
