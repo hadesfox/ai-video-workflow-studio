@@ -757,26 +757,28 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
         <div className="flex-1 flex flex-col overflow-hidden py-4 gap-6 px-10">
           
           {/* Action Row */}
-          <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center justify-between shrink-0 gap-4">
+            {/* Left: View Mode Toggle */}
+            <div className="flex bg-theme-card p-1 rounded-lg border border-theme-border shrink-0">
+              <button 
+                onClick={() => setViewMode('LIST')}
+                className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'LIST' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+              >
+                列表预览
+              </button>
+              <button 
+                onClick={() => setViewMode('GRID')}
+                className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'GRID' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+              >
+                索引预览
+              </button>
+            </div>
+
+            {/* Right: Action Buttons */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-              <div className="flex bg-theme-card p-1 rounded-lg border border-theme-border shrink-0">
-                <button 
-                  onClick={() => setViewMode('LIST')}
-                  className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'LIST' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                >
-                  列表预览
-                </button>
-                <button 
-                  onClick={() => setViewMode('GRID')}
-                  className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'GRID' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                >
-                  索引预览
-                </button>
-              </div>
-              
               <button 
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition-colors ml-2 shrink-0"
+                className="flex items-center gap-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition-colors shrink-0"
               >
                 <Plus size={16} />
                 <span>新建资产</span>
@@ -891,7 +893,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
             {viewMode === 'GRID' ? (
               <div className="h-full overflow-y-auto scroll-smooth pr-2">
                 {!processingLabel && filteredAssets.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8 pb-10">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 pb-10">
                     {filteredAssets.map((asset) => (
                       <motion.div 
                         key={asset.id}
@@ -903,7 +905,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                         className="group flex flex-col cursor-pointer"
                       >
                         {/* Thumbnail Container */}
-                        <div className="aspect-[16/10] bg-theme-panel border border-theme-border rounded-xl overflow-hidden relative mb-4 transition-all hover:border-theme-accent/50 hover:shadow-2xl hover:shadow-theme-accent/10">
+                        <div className="aspect-[3/4] bg-theme-panel border border-theme-border rounded-xl overflow-hidden relative mb-3 transition-all hover:border-theme-accent/50 hover:shadow-2xl hover:shadow-theme-accent/10">
                           {asset.imageUrl || asset.states[0]?.mainImageUrl ? (
                             <img src={asset.imageUrl || asset.states[0]?.mainImageUrl} alt={asset.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                           ) : (
@@ -914,20 +916,20 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                           )}
                           
                           {/* Badge */}
-                          <div className="absolute top-3 left-3 px-2 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded flex items-center gap-1">
+                          <div className="absolute top-2 left-2 px-2 py-0.5 bg-blue-600/90 text-white text-[10px] font-bold rounded flex items-center gap-1">
                             {asset.type === 'CHARACTER' ? '角色' : asset.type === 'SCENE' ? '场景' : '道具'}
                           </div>
                         </div>
 
                         {/* Info */}
-                        <div className="flex flex-col items-center text-center px-2">
-                          <h3 className="text-lg font-bold text-slate-100 mb-1 group-hover:text-blue-400 transition-colors">{asset.name}</h3>
-                          <p className="text-xs text-slate-500 line-clamp-1 mb-2 opacity-80">{asset.description}</p>
+                        <div className="flex flex-col items-center text-center px-1">
+                          <h3 className="text-sm font-bold text-slate-100 mb-0.5 group-hover:text-blue-400 transition-colors">{asset.name}</h3>
+                          <p className="text-[11px] text-slate-500 line-clamp-1 mb-1.5 opacity-80">{asset.description}</p>
                           
                           {/* Episode & Image Stats */}
                           <div className="flex flex-col items-center gap-0.5">
-                            <p className="text-[11px] font-bold text-blue-500/80">第 5、10 集</p>
-                            <p className="text-[10px] text-slate-600">共 {asset.states.length} 个形象</p>
+                            <p className="text-[11px] font-bold text-emerald-400">第 5、10 集</p>
+                            <p className="text-[10px] text-slate-500">共 {asset.states.length} 个形象</p>
                           </div>
                         </div>
                       </motion.div>
