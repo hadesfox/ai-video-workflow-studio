@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Asset, AssetState, AssetSubTab, WorldviewEntry } from '../types';
-import { Layers, RefreshCw, Mic, Volume2, Sparkles, FileSearch, ImagePlus, User, Map, Box, X, ChevronRight, Check, Search, Settings2, Trash2, CheckSquare, Square, LayoutTemplate, List, Play, Upload, Plus, Loader2, Globe2, FileText, File, Palette, Download, Eye, AlignLeft } from 'lucide-react';
+import { Asset, AssetState, AssetSubTab, WorldviewEntry, Material, MaterialType } from '../types';
+import { TAG_TAXONOMY, DURATION_FILTERS, applyMaterialFilters, TagFilterPanel, formatDuration, DurationFilter, SortBy } from './MaterialLibrary';
+import { Layers, RefreshCw, Mic, Volume2, Sparkles, FileSearch, ImagePlus, User, Map, Box, X, ChevronRight, Check, Search, Settings2, Trash2, CheckSquare, Square, LayoutTemplate, List, Play, Upload, Plus, Loader2, Globe2, FileText, File, Palette, Download, Eye, AlignLeft, Link2 } from 'lucide-react';
 
 interface AssetManagementProps {
   assets: Asset[];
@@ -10,9 +11,10 @@ interface AssetManagementProps {
   worldview: WorldviewEntry[];
   setWorldview: React.Dispatch<React.SetStateAction<WorldviewEntry[]>>;
   worldviewEnabled: boolean;
+  materials: Material[];
 }
 
-const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, subTab, worldview, setWorldview, worldviewEnabled }) => {
+const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, subTab, worldview, setWorldview, worldviewEnabled, materials }) => {
   const [activeTypeTab, setActiveTypeTab] = useState<'ALL' | 'CHARACTER' | 'SCENE' | 'PROP'>('ALL');
   
   // Navigation State
@@ -54,6 +56,47 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   const [customStyles, setCustomStyles] = useState<{id: string, name: string, url: string}[]>([]);
   const [showUploadStyleModal, setShowUploadStyleModal] = useState(false);
   const [newStyleForm, setNewStyleForm] = useState({ name: '', url: '' });
+
+  // --- Voice Binding State ---
+  const [showVoiceBindModal, setShowVoiceBindModal] = useState(false);
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
+  const [voiceTagFilter, setVoiceTagFilter] = useState<string[]>([]);
+  const [voiceDurationFilter, setVoiceDurationFilter] = useState<DurationFilter>('ALL');
+  const [voiceSortBy, setVoiceSortBy] = useState<SortBy>('NEWEST');
+
+  const openVoiceBindModal = () => {
+    setVoiceTagFilter([]);
+    setVoiceDurationFilter('ALL');
+    setVoiceSortBy('NEWEST');
+    setSelectedVoiceId(activeAsset?.boundVoiceId || null);
+    setShowVoiceBindModal(true);
+  };
+
+  // 绑定弹窗仅展示配音类型素材，标签/时长/排序筛选与素材库一致
+  const filteredVoiceMaterials = useMemo(() => applyMaterialFilters(
+    materials.filter(m => m.type === MaterialType.VOICE),
+    voiceTagFilter,
+    voiceDurationFilter,
+    voiceSortBy
+  ), [materials, voiceTagFilter, voiceDurationFilter, voiceSortBy]);
+
+  const handleConfirmVoiceBind = () => {
+    if (!activeAsset || !selectedVoiceId) return;
+    const m = materials.find(mat => mat.id === selectedVoiceId);
+    if (!m || m.type !== MaterialType.VOICE) return;
+    setAssets(prev => prev.map(a => a.id === activeAsset.id
+      ? { ...a, boundVoiceId: m.id, boundVoiceName: m.name }
+      : a));
+    setShowVoiceBindModal(false);
+  };
+
+  const handleUnbindVoice = () => {
+    if (!activeAsset) return;
+    setAssets(prev => prev.map(a => a.id === activeAsset.id
+      ? { ...a, boundVoiceId: undefined, boundVoiceName: undefined }
+      : a));
+    setSelectedVoiceId(null);
+  };
 
   // Mock Preset Styles
   const presetStyles = useMemo(() => [
@@ -1225,6 +1268,35 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                           </p>
                         </div>
 
+                        {/* Voice Binding Section (Character Only) */}
+                        {activeAsset.type === 'CHARACTER' && (
+                          <div className="bg-theme-page border border-theme-border rounded-xl p-5">
+                            <div className="flex justify-between items-center mb-3">
+                              <label className="flex items-center gap-2 text-sm font-bold text-purple-400">
+                                <Mic size={16} />
+                                <span>配音绑定</span>
+                              </label>
+                              <button
+                                onClick={openVoiceBindModal}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 rounded-lg text-xs font-bold transition-colors"
+                              >
+                                <Link2 size={12} />
+                                配音绑定
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              {activeAsset.boundVoiceName ? (
+                                <>
+                                  <Mic size={14} className="text-blue-400 shrink-0" />
+                                  <span className="text-slate-200 font-medium truncate">{activeAsset.boundVoiceName}</span>
+                                </>
+                              ) : (
+                                <span className="text-slate-600 italic">未绑定</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Thumbnails Section */}
                         <div>
                           <div className="flex items-center justify-between mb-4">
@@ -1284,6 +1356,139 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
 
           {/* Level 2 Modal removed and integrated into split view right content */}
         </>
+      )}
+
+      {/* VOICE BIND MODAL (near-fullscreen, voice materials only) */}
+      {showVoiceBindModal && activeAsset && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in p-4 lg:p-8">
+          <div className="bg-slate-900 w-full max-w-7xl h-full max-h-[92vh] rounded-3xl border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
+            {/* Header */}
+            <div className="shrink-0 flex justify-between items-center p-6 pb-4 border-b border-white/5">
+              <div>
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Mic className="text-purple-400" size={20} />
+                  绑定配音
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">为角色「{activeAsset.name}」选择配音素材（仅配音类型）</p>
+              </div>
+              <button
+                onClick={() => setShowVoiceBindModal(false)}
+                className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            {/* Tag Classification & Filter Params (same as material library) */}
+            <div className="shrink-0 px-6 py-4 border-b border-white/5 space-y-3">
+              <TagFilterPanel
+                taxonomy={TAG_TAXONOMY[MaterialType.VOICE]}
+                selected={voiceTagFilter}
+                onToggle={(tag) => setVoiceTagFilter(prev => prev.includes(tag) ? prev.filter(x => x !== tag) : [...prev, tag])}
+              />
+              <div className="flex items-center gap-3 pt-3 border-t border-white/5">
+                <span className="text-xs font-bold text-slate-500">筛选参数</span>
+                <select
+                  value={voiceDurationFilter}
+                  onChange={(e) => setVoiceDurationFilter(e.target.value as DurationFilter)}
+                  className="bg-slate-950 border border-slate-800 rounded-md px-2 py-1 text-xs text-slate-300 focus:border-blue-500 outline-none transition-colors"
+                >
+                  {DURATION_FILTERS.map(d => <option key={d.key} value={d.key}>{d.label}</option>)}
+                </select>
+                <select
+                  value={voiceSortBy}
+                  onChange={(e) => setVoiceSortBy(e.target.value as SortBy)}
+                  className="bg-slate-950 border border-slate-800 rounded-md px-2 py-1 text-xs text-slate-300 focus:border-blue-500 outline-none transition-colors"
+                >
+                  <option value="NEWEST">最新上传</option>
+                  <option value="OLDEST">最早上传</option>
+                </select>
+                {(voiceTagFilter.length > 0 || voiceDurationFilter !== 'ALL') && (
+                  <button
+                    onClick={() => { setVoiceTagFilter([]); setVoiceDurationFilter('ALL'); }}
+                    className="px-2 py-1 text-xs text-slate-500 hover:text-red-400 transition-colors"
+                  >
+                    清除筛选
+                  </button>
+                )}
+                <span className="ml-auto text-[10px] text-slate-500">{filteredVoiceMaterials.length} 条配音素材</span>
+              </div>
+            </div>
+
+            {/* Voice Material Grid */}
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+              {filteredVoiceMaterials.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-600 gap-2">
+                  <Mic size={40} strokeWidth={1} />
+                  <span className="text-sm">
+                    {materials.some(m => m.type === MaterialType.VOICE)
+                      ? '没有符合筛选条件的配音素材'
+                      : '暂无配音素材，请先前往素材库上传'}
+                  </span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                  {filteredVoiceMaterials.map(m => {
+                    const isSelected = selectedVoiceId === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => setSelectedVoiceId(isSelected ? null : m.id)}
+                        className={`relative text-left rounded-xl border p-4 transition-all ${
+                          isSelected
+                            ? 'border-purple-500 bg-purple-600/10'
+                            : 'border-slate-800 bg-slate-950 hover:border-slate-600'
+                        }`}
+                      >
+                        {isSelected && <Check size={16} className="absolute top-3 right-3 text-purple-400" />}
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${isSelected ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                          <Mic size={18} />
+                        </div>
+                        <p className={`text-sm font-bold truncate ${isSelected ? 'text-purple-300' : 'text-slate-200'}`}>{m.name}</p>
+                        <p className="text-[10px] text-slate-600 mt-0.5 truncate">
+                          {formatDuration(m.duration)}{m.fileName ? ` · ${m.fileName}` : ''}
+                        </p>
+                        {m.tags && m.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {m.tags.slice(0, 3).map(tag => (
+                              <span key={tag} className="px-1.5 py-0.5 rounded bg-slate-800/80 text-[10px] text-slate-500">{tag}</span>
+                            ))}
+                            {m.tags.length > 3 && <span className="text-[10px] text-slate-600">+{m.tags.length - 3}</span>}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="shrink-0 p-6 pt-4 border-t border-slate-800 flex gap-3">
+              {activeAsset.boundVoiceId && (
+                <button
+                  onClick={handleUnbindVoice}
+                  className="px-4 py-2.5 border border-red-500/30 text-red-400 hover:bg-red-600/10 rounded-lg text-sm font-bold transition-colors"
+                >
+                  取消绑定
+                </button>
+              )}
+              <button
+                onClick={() => setShowVoiceBindModal(false)}
+                className="flex-1 py-2.5 border border-slate-700 rounded-lg text-sm font-bold text-slate-400 hover:bg-slate-800 transition-colors"
+              >
+                关闭
+              </button>
+              <button
+                onClick={handleConfirmVoiceBind}
+                disabled={!selectedVoiceId}
+                className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-bold text-white transition-colors"
+              >
+                确认绑定
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* NEW: ADD ASSET MODAL */}

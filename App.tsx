@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MainTab, AssetSubTab, VideoSubTab, ReviewSubTab, MasterLibSubTab, Project, Asset, Episode, VideoSettings, TimelineClip, WorldviewEntry, ConfigKeys, AgentSettings, ProjectGroup, UserAccount } from './types';
+import { MainTab, AssetSubTab, VideoSubTab, ReviewSubTab, MasterLibSubTab, Project, Asset, Episode, VideoSettings, TimelineClip, WorldviewEntry, ConfigKeys, AgentSettings, ProjectGroup, UserAccount, Material, MaterialType } from './types';
 import ProjectSelection from './components/ProjectSelection';
 import AssetManagement from './components/AssetManagement';
 import StageMasterLib from './components/StageMasterLib'; 
@@ -11,7 +11,8 @@ import FormPage from './components/FormPage';
 import BackendManagement from './components/BackendManagement';
 import PersonalCenter from './components/PersonalCenter';
 import PartnerCollaboration from './components/PartnerCollaboration';
-import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap, LayoutDashboard, UserCircle, ChevronLeft, RefreshCw, Cloud, LayoutGrid, Disc, Users2 } from 'lucide-react';
+import MaterialLibrary from './components/MaterialLibrary';
+import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap, LayoutDashboard, UserCircle, ChevronLeft, RefreshCw, Cloud, LayoutGrid, Disc, Users2, Library } from 'lucide-react';
 
 // Default Settings Helper
 const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
@@ -29,6 +30,33 @@ const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
         };
     });
     return settings;
+};
+
+// Demo placeholder materials (for development demo)
+const createDemoMaterials = (): Material[] => {
+  const now = Date.now();
+  const day = 86400000;
+  return [
+    // Dubbing
+    { id: 'demo-voice-1', name: 'Sweet female voice · Narration', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', fileName: 'tianmei-nvsheng.mp3', duration: 15, size: 245000, tags: ['Female voice', 'Narration', 'Popular'], createdAt: now - day },
+    { id: 'demo-voice-2', name: 'Magnetic male voice · Documentary', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', fileName: 'cixing-nansheng.mp3', duration: 32, size: 512000, tags: ['Male voice', 'Narration', 'Ultra-realistic'], createdAt: now - day * 2 },
+    { id: 'demo-voice-3', name: 'Anime child voice', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', fileName: 'dongman-tongsheng.mp3', duration: 8, size: 130000, tags: ['Child voice', 'Anime', 'Character acting'], createdAt: now - day * 3 },
+    { id: 'demo-voice-4', name: 'Dialect storytelling master', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', fileName: 'fangyan-pingshu.mp3', duration: 75, size: 1200000, tags: ['Male voice', 'Dialect', 'Entertainment'], createdAt: now - day * 4 },
+    // Music
+    { id: 'demo-music-1', name: 'Epic battle BGM', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', fileName: 'epic-battle.mp3', duration: 60, size: 960000, tags: ['Epic', 'Battle', 'Rock'], createdAt: now - day * 2 },
+    { id: 'demo-music-2', name: 'Warm healing piano', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', fileName: 'warm-piano.mp3', duration: 95, size: 1520000, tags: ['Warm', 'Emotional', 'Instrumental'], createdAt: now - day * 5 },
+    { id: 'demo-music-3', name: 'Tense suspense electronic', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', fileName: 'tense-electronic.mp3', duration: 30, size: 480000, tags: ['Tense', 'Trailer', 'Electronic'], createdAt: now - day },
+    // Sound effects
+    { id: 'demo-sfx-1', name: 'Game hit sound effect', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', fileName: 'game-daji.mp3', duration: 2, size: 32000, tags: ['Game SFX', 'Hit'], createdAt: now - day * 3 },
+    { id: 'demo-sfx-2', name: 'Rain ambient sound', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3', fileName: 'yusheng-huanjing.mp3', duration: 65, size: 1040000, tags: ['Environmental sound', 'Nature'], createdAt: now - day * 6 },
+    { id: 'demo-sfx-3', name: 'Whoosh transition sound', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3', fileName: 'whoosh.mp3', duration: 3, size: 48000, tags: ['Electronic', 'Friction'], createdAt: now - day },
+    // Video
+    { id: 'demo-video-1', name: 'City nightscape aerial shot', type: MaterialType.VIDEO, url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', fileName: 'city-night.mp4', duration: 15, size: 2400000, tags: ['Live action', 'City'], createdAt: now - day * 2 },
+    { id: 'demo-video-2', name: 'Sci-fi particle transition', type: MaterialType.VIDEO, url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', fileName: 'scifi-transition.mp4', duration: 5, size: 800000, tags: ['VFX', 'Transition', 'Tech'], createdAt: now - day * 4 },
+    // Image
+    { id: 'demo-image-1', name: 'Cyberpunk street illustration', type: MaterialType.IMAGE, url: 'https://picsum.photos/seed/cyberpunk-street/640/360', fileName: 'cyberpunk.jpg', tags: ['Illustration', 'Cyberpunk'], createdAt: now - day * 2 },
+    { id: 'demo-image-2', name: 'Chinese-style landscape texture', type: MaterialType.IMAGE, url: 'https://picsum.photos/seed/guofeng-shanshui/640/360', fileName: 'guofeng.jpg', tags: ['Texture', 'Chinese style'], createdAt: now - day * 7 },
+  ];
 };
 
 // --- Login Component ---
@@ -186,6 +214,7 @@ const App: React.FC = () => {
 
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [materials, setMaterials] = useState<Material[]>(createDemoMaterials()); // 素材库为全局资源，与项目解耦
   const [worldview, setWorldview] = useState<WorldviewEntry[]>([]); 
   const [globalSettings, setGlobalSettings] = useState<Record<ConfigKeys, AgentSettings>>(createDefaultSettings()); 
   
@@ -282,6 +311,7 @@ const App: React.FC = () => {
             worldview={worldview}
             setWorldview={setWorldview}
             worldviewEnabled={globalSettings['worldview'].enabled !== false}
+            materials={materials}
           />
         );
       case MainTab.MASTER_LIB:
@@ -298,6 +328,7 @@ const App: React.FC = () => {
             episodes={episodes}
             setEpisodes={setEpisodes}
             assets={assets} 
+            materials={materials}
             videoSettings={videoSettings}
             setVideoSettings={setVideoSettings}
             setEditorClips={setEditorClips}
@@ -321,6 +352,14 @@ const App: React.FC = () => {
         );
       case MainTab.GENERATOR:
         return <VideoGenerator />;
+      case MainTab.MATERIAL_LIB:
+        return (
+          <MaterialLibrary
+            materials={materials}
+            setMaterials={setMaterials}
+            onBack={() => setCurrentTab(project ? MainTab.ASSETS : MainTab.PROJECTS)}
+          />
+        );
       default:
         return <div className="p-10 text-center">页面施工中...</div>;
     }
@@ -491,6 +530,13 @@ const App: React.FC = () => {
              )}
              
              <div className="flex items-center gap-2 relative">
+                <button
+                  onClick={() => setCurrentTab(MainTab.MATERIAL_LIB)}
+                  className="flex items-center gap-1.5 p-2 text-slate-500 hover:text-blue-400 transition-colors"
+                  title="素材库"
+                >
+                  <Library size={18} />
+                </button>
                 <button
                  className="p-2 text-slate-500 hover:text-blue-400 transition-colors"
                  onClick={() => setCurrentTab(MainTab.GENERATOR)}

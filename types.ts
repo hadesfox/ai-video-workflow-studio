@@ -5,7 +5,28 @@ export enum MainTab {
   VIDEO = 'VIDEO',
   REVIEW = 'REVIEW',
   PARTNER = 'PARTNER',
-  GENERATOR = 'GENERATOR'
+  GENERATOR = 'GENERATOR',
+  MATERIAL_LIB = 'MATERIAL_LIB'
+}
+
+export enum MaterialType {
+  VOICE = 'VOICE',   // 配音
+  MUSIC = 'MUSIC',   // 音乐
+  SFX = 'SFX',       // 音效
+  VIDEO = 'VIDEO',   // 视频
+  IMAGE = 'IMAGE'    // 图片
+}
+
+export interface Material {
+  id: string;
+  name: string;
+  type: MaterialType;
+  url: string;        // data URL / 外部 URL
+  fileName?: string;  // 原始文件名
+  duration?: number;  // 秒（音/视频可选）
+  size?: number;      // 字节
+  tags?: string[];    // 标签（用于分类筛选）
+  createdAt: number;
 }
 
 export enum WorkflowStage {
@@ -89,6 +110,8 @@ export interface Asset {
   // Compatibility field, usually points to activeState's mainImage
   imageUrl?: string;
   states: AssetState[];
+  boundVoiceId?: string;   // 绑定的配音素材 id
+  boundVoiceName?: string; // 绑定的配音素材名（冗余存储，便于提示词直接拼接）
 }
 
 export interface Shot {

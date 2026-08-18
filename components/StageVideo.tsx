@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab } from '../types';
-import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText, Upload, Trash2 } from 'lucide-react';
+import { Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab, Material } from '../types';
+import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText, Upload, Trash2, Mic } from 'lucide-react';
 
 const InsertUpIcon = ({ size = 16, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -22,6 +22,7 @@ interface StageVideoProps {
   episodes: Episode[];
   setEpisodes: React.Dispatch<React.SetStateAction<Episode[]>>;
   assets: Asset[];
+  materials: Material[];
   videoSettings: VideoSettings;
   setVideoSettings: React.Dispatch<React.SetStateAction<VideoSettings>>;
   setEditorClips: React.Dispatch<React.SetStateAction<TimelineClip[]>>;
@@ -33,7 +34,7 @@ interface StageVideoProps {
   setSubTab?: (tab: VideoSubTab) => void; // Added setter
 }
 
-const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, videoSettings, setVideoSettings, setEditorClips, goToAssets, onNext, hasVisitedVideo, setHasVisitedVideo, subTab = VideoSubTab.VIDU, setSubTab }) => {
+const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, materials, videoSettings, setVideoSettings, setEditorClips, goToAssets, onNext, hasVisitedVideo, setHasVisitedVideo, subTab = VideoSubTab.VIDU, setSubTab }) => {
   // --- Sidebar & Layout State ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isPinned, setIsPinned] = useState(false); // Default to unpinned per request
@@ -101,6 +102,17 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
 
     matches.forEach(match => {
       const tagContent = match[1]; 
+
+      // 配音标签：【@配音:名字】
+      if (tagContent.startsWith('配音:')) {
+        linkedAssets.push({
+          name: tagContent,
+          url: '',
+          type: 'VOICE'
+        });
+        return;
+      }
+
       const [assetName, stateName] = tagContent.split('-');
       
       const asset = assets.find(a => a.name === assetName);
@@ -124,6 +136,8 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
       const matches = [...prompt.matchAll(regex)];
       for (const match of matches) {
           const tagContent = match[1];
+          // 配音标签不参与「缺失资产」校验
+          if (tagContent.startsWith('配音:')) continue;
           const [assetName] = tagContent.split('-');
           const asset = assets.find(a => a.name === assetName);
           if (!asset) return true; 
@@ -160,6 +174,7 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
     } else {
       prompt += "神秘的黑影在迷雾中穿行。";
     }
+    if (char?.boundVoiceName) prompt += `【@配音:${char.boundVoiceName}】`;
     return prompt;
   };
 
@@ -997,12 +1012,27 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                                         <div className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar">
                                         {linkedAssets.map((asset, i) => (
                                             <div key={i} className="flex items-center gap-2 bg-slate-800 rounded-lg pr-3 pl-1 py-1 border border-slate-700 shrink-0">
-                                                <div className="w-8 h-8 rounded bg-black overflow-hidden shrink-0">
-                                                    <img src={asset.url} alt="" className="w-full h-full object-cover" />
-                                                </div>
+                                                {asset.type === 'VOICE' ? (
+                                                    <div className="w-8 h-8 rounded bg-purple-600/20 flex items-center justify-center shrink-0">
+                                                        <Mic size={14} className="text-purple-400" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-8 h-8 rounded bg-black overflow-hidden shrink-0">
+                                                        <img src={asset.url} alt="" className="w-full h-full object-cover" />
+                                                    </div>
+                                                )}
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className="text-xs font-medium text-slate-200 truncate max-w-[100px]">{asset.name.replace('【@', '').replace('】', '').split('-')[0]}</span>
-                                                    <span className="text-[10px] text-slate-500 truncate max-w-[100px]">{asset.name.replace('【@', '').replace('】', '').split('-')[1]}</span>
+                                                    {asset.type === 'VOICE' ? (
+                                                        <>
+                                                            <span className="text-xs font-medium text-slate-200 truncate max-w-[100px]">{asset.name.replace('配音:', '')}</span>
+                                                            <span className="text-[10px] text-purple-400/80 truncate max-w-[100px]">配音</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-xs font-medium text-slate-200 truncate max-w-[100px]">{asset.name.replace('【@', '').replace('】', '').split('-')[0]}</span>
+                                                            <span className="text-[10px] text-slate-500 truncate max-w-[100px]">{asset.name.replace('【@', '').replace('】', '').split('-')[1]}</span>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
