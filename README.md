@@ -1,20 +1,37 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# AI 视频创作工作流 Studio
 
-# Run and deploy your AI Studio app
+面向影视 / 短视频团队的一站式 AI 视频创作工作流工具：从剧本导入出发，完成资产提取、分镜生成、视频合成的完整创作流程，并提供全局素材库与角色配音绑定能力。
 
-This contains everything you need to run your app locally.
+## 功能概览
 
-View your app in AI Studio: https://ai.studio/apps/d1c05e8a-1f0c-4df7-b63a-f6444193342c
+- **项目管理**：导入剧本创建项目，按工作流阶段推进创作
+- **资产管理**：AI 提取角色 / 场景 / 道具，生成多形态状态资产与细节设定
+- **素材库**：配音 / 音乐 / 音效 / 视频 / 图片五类素材分页管理，每类带标签分类体系与筛选参数（标签 / 时长 / 排序），支持上传打标签与删除
+- **配音绑定**：角色资产可绑定配音素材；生成分镜时提示词自动追加 `【@配音:名字】` 标签，参与高亮与关联资产展示
+- **视频管理**：分镜生成、提示词编辑、关联资产校验与视频合成
+- **后台管理**：模型调用、用户与权限配置
 
-## Run Locally
+## 本地运行
 
-**Prerequisites:**  Node.js
+**前置条件：** Node.js
 
-
-1. Install dependencies:
+1. 安装依赖：
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. （可选）在 `.env.local` 中配置 `GEMINI_API_KEY`；未配置时以演示模式运行
+3. 启动应用：
    `npm run dev`
+4. 访问终端输出的本地地址，演示账号 `admin / 123456`
+
+## 构建与部署
+
+`npm run build`
+
+产物位于 `dist/` 目录，可通过 `.github/workflows/deploy.yml` 的 GitHub Actions 工作流自动部署到 GitHub Pages。
+
+## 文档
+
+- [素材库与配音绑定需求文档](docs/素材库与配音绑定需求文档.md)
+
+## 技术栈
+
+React + TypeScript + Vite + Tailwind CSS + framer-motion + lucide-react
