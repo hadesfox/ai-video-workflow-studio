@@ -178,7 +178,7 @@ const App: React.FC = () => {
   // --- Global State ---
   const [currentTab, setCurrentTab] = useState<MainTab>(MainTab.PROJECTS);
   const [assetSubTab, setAssetSubTab] = useState<AssetSubTab>(AssetSubTab.IMAGES);
-  const [videoSubTab, setVideoSubTab] = useState<VideoSubTab>(VideoSubTab.VIDU);
+  const [videoSubTab, setVideoSubTab] = useState<VideoSubTab>(VideoSubTab.SEEDANCE);
   const [reviewSubTab, setReviewSubTab] = useState<ReviewSubTab>(ReviewSubTab.ONLINE_REVIEW);
   const [masterLibSubTab, setMasterLibSubTab] = useState<MasterLibSubTab>(MasterLibSubTab.SEEDANCE);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);

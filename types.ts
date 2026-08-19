@@ -125,6 +125,24 @@ export interface Shot {
 // 扩展 Shot 接口以在本地支持多版本视频
 export interface ExtendedShot extends Shot {
   videoVersions?: string[]; // 存储历史版本
+  promptVersions?: PromptVersion[]; // 提示词保存版本
+  genConfig?: ShotGenConfig; // 单镜头生成参数与显示设置
+}
+
+// 提示词保存版本
+export interface PromptVersion {
+  id: string;
+  text: string;
+  savedAt: number;
+}
+
+// 单镜头生成参数
+export interface ShotGenConfig {
+  model: string;      // 模型: 2.5 / fast / mini / 2.0
+  ratio: string;      // 画面比例
+  resolution: string; // 分辨率
+  duration: string;   // 生成秒数: 自动 / 4-15秒
+  fontSize: 'sm' | 'md' | 'lg'; // 提示词字号
 }
 
 // 分集接口

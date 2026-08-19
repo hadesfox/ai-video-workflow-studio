@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab, Material } from '../types';
-import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText, Upload, Trash2, Mic } from 'lucide-react';
+import { Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab, Material, PromptVersion, ShotGenConfig } from '../types';
+import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText, Upload, Trash2, Mic, Save, History, Cpu, Eraser, RefreshCw, PenTool, Layers, ChevronDown } from 'lucide-react';
 
 const InsertUpIcon = ({ size = 16, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -34,10 +34,11 @@ interface StageVideoProps {
   setSubTab?: (tab: VideoSubTab) => void; // Added setter
 }
 
-const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, materials, videoSettings, setVideoSettings, setEditorClips, goToAssets, onNext, hasVisitedVideo, setHasVisitedVideo, subTab = VideoSubTab.VIDU, setSubTab }) => {
+const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, materials, videoSettings, setVideoSettings, setEditorClips, goToAssets, onNext, hasVisitedVideo, setHasVisitedVideo, subTab = VideoSubTab.SEEDANCE, setSubTab }) => {
   // --- Sidebar & Layout State ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isPinned, setIsPinned] = useState(false); // Default to unpinned per request
+  const [isScriptOpen, setIsScriptOpen] = useState(true); // 左侧剧本面板折叠
   
   // Track active video index for each shot (for carousel)
   const [activeVideoIndices, setActiveVideoIndices] = useState<Record<string, number>>({});
@@ -80,6 +81,20 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
   // Prompt Editing State
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // Prompt Version Popover State
+  const [versionPopoverShotId, setVersionPopoverShotId] = useState<string | null>(null);
+  const [savedFeedbackShotId, setSavedFeedbackShotId] = useState<string | null>(null);
+  // Top Action Buttons State
+  const [batchMenuOpen, setBatchMenuOpen] = useState(false); // 批量操作下拉
+  const [lineartGenerating, setLineartGenerating] = useState(false); // 线稿分镜生成中
+  const [previewAllOpen, setPreviewAllOpen] = useState(false); // 预览全集弹窗
+  const [previewAllIndex, setPreviewAllIndex] = useState(0);
+  // 前后提示词设置
+  const [fbModalOpen, setFbModalOpen] = useState(false);
+  const [fbDraftEnabled, setFbDraftEnabled] = useState(true);
+  const [fbDraftFront, setFbDraftFront] = useState('');
+  const [fbDraftBack, setFbDraftBack] = useState('');
+  const [appliedFB, setAppliedFB] = useState<{ enabled: boolean; front: string; back: string }>({ enabled: false, front: '', back: '' });
 
   // Get active episode data
   const activeEpisode = episodes.find(e => e.id === activeEpisodeId);
@@ -369,6 +384,133 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
      }));
   };
 
+  // --- Per-Shot Gen Config & Prompt Versions ---
+  const MODEL_OPTIONS = ['2.5', 'fast', 'mini', '2.0'];
+  const RATIO_OPTIONS = ['16:9', '9:16', '1:1', '21:9', '4:3', '3:4'];
+  const RESOLUTION_OPTIONS = ['720p', '1080p', '2K', '4K'];
+  const DURATION_OPTIONS = ['自动', ...Array.from({ length: 12 }, (_, i) => `${i + 4}s`)];
+  const DEFAULT_GEN_CONFIG: ShotGenConfig = { model: 'fast', ratio: '16:9', resolution: '720p', duration: '自动', fontSize: 'md' };
+
+  const getGenConfig = (shot: ExtendedShot): ShotGenConfig => ({ ...DEFAULT_GEN_CONFIG, ...(shot.genConfig || {}) });
+
+  const updateGenConfig = (shotId: string, patch: Partial<ShotGenConfig>) => {
+    setEpisodes(prev => prev.map(ep => {
+      if (ep.id !== activeEpisodeId) return ep;
+      return {
+        ...ep,
+        shots: ep.shots.map(s => s.id === shotId
+          ? { ...s, genConfig: { ...DEFAULT_GEN_CONFIG, ...(s.genConfig || {}), ...patch } }
+          : s)
+      };
+    }));
+  };
+
+  const handleSavePromptVersion = (shot: ExtendedShot) => {
+    const version: PromptVersion = { id: `pv-${shot.id}-${Date.now()}`, text: shot.description, savedAt: Date.now() };
+    setEpisodes(prev => prev.map(ep => {
+      if (ep.id !== activeEpisodeId) return ep;
+      return {
+        ...ep,
+        shots: ep.shots.map(s => s.id === shot.id ? { ...s, promptVersions: [version, ...(s.promptVersions || [])] } : s)
+      };
+    }));
+    setSavedFeedbackShotId(shot.id);
+    setTimeout(() => setSavedFeedbackShotId(cur => (cur === shot.id ? null : cur)), 1500);
+  };
+
+  const handleRestorePromptVersion = (shotId: string, version: PromptVersion) => {
+    handleShotPromptChange(shotId, version.text);
+    setVersionPopoverShotId(null);
+  };
+
+  const fontSizeClass = (size: 'sm' | 'md' | 'lg') =>
+    size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-base' : 'text-sm';
+
+  const renderParamSelect = (
+    icon: React.ReactNode,
+    value: string,
+    options: string[],
+    onChange: (v: string) => void,
+    title: string
+  ) => (
+    <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg pl-2 pr-1 py-1 hover:border-slate-500 transition-colors" title={title}>
+      {icon}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-transparent text-xs text-slate-300 focus:outline-none cursor-pointer"
+      >
+        {options.map(opt => (
+          <option key={opt} value={opt} className="bg-slate-900 text-slate-200">{opt}</option>
+        ))}
+      </select>
+    </div>
+  );
+
+  // --- Top Action Handlers ---
+
+  const handleRemoveSubtitles = () => {
+    const completed = (activeEpisode?.shots || []).filter(s => s.status === 'COMPLETED');
+    if (completed.length === 0) {
+      alert('当前分集暂无已完成视频，无法执行去字幕处理。');
+      return;
+    }
+    alert(`已提交去字幕处理任务（演示）：将为 ${completed.length} 个已完成视频生成无字幕版本。`);
+  };
+
+  const handlePreviewAll = () => {
+    setPreviewAllIndex(0);
+    setPreviewAllOpen(true);
+  };
+
+  const handleGenerateLineart = () => {
+    if (!activeEpisode?.shots.length) return;
+    setLineartGenerating(true);
+    setTimeout(() => {
+      setLineartGenerating(false);
+      alert(`线稿分镜已生成（演示）：共 ${activeEpisode.shots.length} 张线稿草图，可在分镜卡片中查看。`);
+    }, 1500);
+  };
+
+  const openFrontBackModal = () => {
+    setFbDraftEnabled(appliedFB.enabled);
+    setFbDraftFront(appliedFB.front);
+    setFbDraftBack(appliedFB.back);
+    setFbModalOpen(true);
+  };
+
+  const handleSaveFrontBack = () => {
+    const prev = appliedFB;
+    const next = {
+      enabled: fbDraftEnabled,
+      front: fbDraftEnabled ? fbDraftFront.trim() : '',
+      back: fbDraftEnabled ? fbDraftBack.trim() : ''
+    };
+    const wrapF = (f: string) => f + '\n';
+    const wrapB = (b: string) => '\n' + b;
+    setEpisodes(prevEps => prevEps.map(ep => {
+      if (ep.id !== activeEpisodeId) return ep;
+      return {
+        ...ep,
+        shots: ep.shots.map(s => {
+          let text = s.description;
+          // 先剥离上一次应用的前后提示词，避免重复叠加
+          if (prev.enabled) {
+            if (prev.front && text.startsWith(wrapF(prev.front))) text = text.slice(wrapF(prev.front).length);
+            if (prev.back && text.endsWith(wrapB(prev.back))) text = text.slice(0, text.length - wrapB(prev.back).length);
+          }
+          // 再固定追加新的前后提示词
+          if (next.enabled) {
+            if (next.front) text = wrapF(next.front) + text;
+            if (next.back) text = text + wrapB(next.back);
+          }
+          return { ...s, description: text };
+        })
+      };
+    }));
+    setAppliedFB(next);
+    setFbModalOpen(false);
+  };
   const handleInsertShot = (index: number) => {
       const activeEpisode = episodes.find(ep => ep.id === activeEpisodeId);
       if (!activeEpisode) return;
@@ -480,6 +622,7 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
   
   const handleMainContentClick = () => {
     if (!isPinned && isSidebarOpen) setIsSidebarOpen(false);
+    if (batchMenuOpen) setBatchMenuOpen(false);
   };
 
   const scrollToShot = (shotId: string) => {
@@ -662,6 +805,23 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
 
             <div className="flex items-center gap-3">
                <button 
+                  onClick={(e) => { e.stopPropagation(); handleRemoveSubtitles(); }}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-fuchsia-900/20 transition-all active:scale-95"
+                  title="为已完成视频生成无字幕版本"
+               >
+                  <Eraser size={16} />
+                  <span>去字幕视频</span>
+               </button>
+               <button 
+                  onClick={(e) => { e.stopPropagation(); handlePreviewAll(); }}
+                  disabled={!activeEpisode?.shots.some(s => s.status === 'COMPLETED')}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-purple-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                  title="按顺序预览本集已完成视频"
+               >
+                  <Play size={16} />
+                  <span>预览全集</span>
+               </button>
+               <button 
                   onClick={(e) => { e.stopPropagation(); handleFullDownload(); }}
                   className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 text-sm transition-colors"
                >
@@ -684,6 +844,33 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                <span>共 {activeEpisode?.shots.length || 0} 个镜头</span>
             </div>
             <div className="flex items-center gap-3">
+               {/* 前后提示词 设置 */}
+               <button 
+                  onClick={(e) => { e.stopPropagation(); openFrontBackModal(); }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-95 ${
+                     appliedFB.enabled
+                     ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20'
+                     : 'bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300'
+                  }`}
+                  title="设置固定追加到每个分镜提示词前后的内容"
+               >
+                  <RefreshCw size={16} />
+                  <span>前后提示词</span>
+                  {appliedFB.enabled && <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/20">已启用</span>}
+               </button>
+
+               {/* 生成线稿分镜 */}
+               <button 
+                  onClick={(e) => { e.stopPropagation(); handleGenerateLineart(); }}
+                  disabled={!activeEpisode?.shots.length || lineartGenerating}
+                  className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-teal-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                  title="为全部分镜生成线稿草图"
+               >
+                  {lineartGenerating ? <Loader2 className="animate-spin" size={16} /> : <PenTool size={16} />}
+                  <span>生成线稿分镜</span>
+               </button>
+
+               {/* 生成分镜 */}
                <button 
                   onClick={(e) => { e.stopPropagation(); handleGenerateStoryboard(); }}
                   disabled={generating || (activeEpisode?.shots.length || 0) > 0} 
@@ -693,67 +880,103 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                   {generating ? <Loader2 className="animate-spin" size={16} /> : <Clapperboard size={16} />}
                   <span>生成分镜</span>
                </button>
-               <div className="w-px h-6 bg-slate-800 mx-1"></div>
-               
-               {/* Global Action 1: Subject Video (Only visible in VIDU tab) */}
-               {subTab === VideoSubTab.VIDU && (
-                   <button 
-                      onClick={(e) => { e.stopPropagation(); handleOneClickVideo('SUBJECT'); }}
-                      disabled={!activeEpisode?.shots.length || isBatchGenerating}
-                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-purple-900/20 disabled:opacity-50 transition-all active:scale-95"
-                   >
-                      {isBatchGenerating && <Loader2 className="animate-spin" size={16} />}
-                      <User size={16} />
-                      <span>一键生成主体视频</span>
-                   </button>
-               )}
 
-               {/* Global Action 2: Image Video */}
-               <button 
-                  onClick={(e) => { e.stopPropagation(); handleOneClickVideo('IMAGE'); }}
-                  disabled={!activeEpisode?.shots.length || isBatchGenerating}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-900/20 disabled:opacity-50 transition-all active:scale-95"
-               >
-                  {isBatchGenerating && <Loader2 className="animate-spin" size={16} />}
-                  <ImageIcon size={16} />
-                  <span>一键生成图生视频</span>
-               </button>
-
-               <button 
-                  onClick={(e) => { e.stopPropagation(); handleVideoDownload(); }}
-                  disabled={!activeEpisode?.shots.length}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
-                  title="下载本集视频"
-               >
-                  <Download size={16} />
-                  <span>下载本集视频</span>
-               </button>
-               <button 
-                  onClick={(e) => { e.stopPropagation(); setExportModal(true); }}
-                  disabled={!activeEpisode?.shots.length}
-                  className="flex items-center gap-2 px-4 py-2 bg-pink-700 hover:bg-pink-600 text-white border border-pink-600 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors shadow-lg shadow-pink-900/20"
-               >
-                  <Share size={16} />
-                  <span>一键导出剪辑</span>
-               </button>
+               {/* 批量操作 Dropdown */}
+               <div className="relative">
+                  <button 
+                     onClick={(e) => { e.stopPropagation(); setBatchMenuOpen(!batchMenuOpen); }}
+                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-95 ${
+                        batchMenuOpen
+                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-900/30'
+                        : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20'
+                     }`}
+                  >
+                     <Layers size={16} />
+                     <span>批量操作</span>
+                     <ChevronDown size={14} className={`transition-transform ${batchMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {batchMenuOpen && (
+                     <div 
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-0 top-full mt-1 w-48 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-40 py-1 animate-fade-in"
+                     >
+                        <button 
+                           onClick={() => { setBatchMenuOpen(false); handleOneClickVideo('IMAGE'); }}
+                           disabled={!activeEpisode?.shots.length || isBatchGenerating}
+                           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                           <ImageIcon size={14} />
+                           <span>一键生成图生视频</span>
+                        </button>
+                        <button 
+                           onClick={() => { setBatchMenuOpen(false); handleOneClickVideo('SUBJECT'); }}
+                           disabled={!activeEpisode?.shots.length || isBatchGenerating}
+                           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                           <User size={14} />
+                           <span>一键生成主体视频</span>
+                        </button>
+                        <div className="h-px bg-slate-800 my-1"></div>
+                        <button 
+                           onClick={() => { setBatchMenuOpen(false); handleVideoDownload(); }}
+                           disabled={!activeEpisode?.shots.length}
+                           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                           <Download size={14} />
+                           <span>一键下载视频</span>
+                        </button>
+                        <button 
+                           onClick={() => { setBatchMenuOpen(false); setExportModal(true); }}
+                           disabled={!activeEpisode?.shots.length}
+                           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                           <Share size={14} />
+                           <span>一键导出剪辑</span>
+                        </button>
+                     </div>
+                  )}
+               </div>
             </div>
          </div>
 
          {/* Content Area: Split View */}
          <div className="flex-1 flex overflow-hidden">
             
-            {/* Left: Script Content (Sticky/Scrollable) */}
-            {activeEpisode && (
-                <div className="w-[25%] min-w-[200px] max-w-[400px] bg-slate-950 border-r border-slate-800 p-6 overflow-y-auto custom-scrollbar shrink transition-all duration-300">
-                    <div className="mb-4 flex items-center gap-2 text-slate-400">
-                        <FileText size={18} />
-                        <h3 className="font-bold text-sm uppercase tracking-wider">本集剧本</h3>
+            {/* Left: Script Content (Collapsible) */}
+            {activeEpisode && (isScriptOpen ? (
+                <div className="w-[25%] min-w-[200px] max-w-[400px] bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 transition-all duration-300">
+                    <div className="flex items-center justify-between px-6 pt-5 pb-3 shrink-0">
+                        <div className="flex items-center gap-2 text-slate-400">
+                            <FileText size={18} />
+                            <h3 className="font-bold text-sm uppercase tracking-wider">本集剧本</h3>
+                        </div>
+                        <button
+                            onClick={() => setIsScriptOpen(false)}
+                            className="text-slate-500 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
+                            title="折叠剧本"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
                     </div>
-                    <div className="prose prose-invert prose-sm max-w-none text-slate-300 font-mono leading-relaxed whitespace-pre-wrap">
-                        {activeEpisode.scriptContent || "暂无剧本内容..."}
+                    <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">
+                        <div className="prose prose-invert prose-sm max-w-none text-slate-300 font-mono leading-relaxed whitespace-pre-wrap">
+                            {activeEpisode.scriptContent || "暂无剧本内容..."}
+                        </div>
                     </div>
                 </div>
-            )}
+            ) : (
+                <div className="w-10 bg-slate-950 border-r border-slate-800 flex flex-col items-center pt-4 shrink-0">
+                    <button
+                        onClick={() => setIsScriptOpen(true)}
+                        className="text-slate-500 hover:text-white p-1.5 rounded hover:bg-slate-800 transition-colors"
+                        title="展开剧本"
+                    >
+                        <ChevronRight size={16} />
+                    </button>
+                    <FileText size={14} className="text-slate-600 mt-2" />
+                    <span className="text-[10px] text-slate-600 mt-3 [writing-mode:vertical-rl] tracking-widest select-none">本集剧本</span>
+                </div>
+            ))}
 
             {/* Right: Storyboard Grid */}
             <div className="flex-1 overflow-y-auto p-6 bg-slate-900/50 relative scroll-smooth pr-16 custom-scrollbar"> 
@@ -792,6 +1015,7 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                         const hasVideo = !!activeVideoUrl && (shot.status === 'COMPLETED' || (shot.status === 'ERROR' && dismissedErrorShots.has(shot.id)));
                         
                         const isEditing = editingShotId === shot.id;
+                        const cfg = getGenConfig(shot);
 
                         return (
                             <div key={shot.id} className="relative flex flex-col">
@@ -950,6 +1174,53 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                                         >
                                             {isEditing ? <CheckCircle2 size={14} className="text-emerald-500"/> : <Edit3 size={14} />}
                                         </button>
+                                        <button
+                                            onClick={() => handleSavePromptVersion(shot)}
+                                            className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-xs transition-colors"
+                                            title="将当前提示词保存为一个版本"
+                                        >
+                                            {savedFeedbackShotId === shot.id ? <CheckCircle2 size={12} className="text-emerald-400" /> : <Save size={12} />}
+                                            <span>{savedFeedbackShotId === shot.id ? '已保存' : '保存提示词'}</span>
+                                        </button>
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setVersionPopoverShotId(versionPopoverShotId === shot.id ? null : shot.id)}
+                                                className={`flex items-center gap-1 px-2 py-1 border rounded text-xs transition-colors ${
+                                                    versionPopoverShotId === shot.id
+                                                    ? 'bg-slate-700 border-slate-500 text-white'
+                                                    : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
+                                                }`}
+                                                title="查看并恢复已保存的提示词版本"
+                                            >
+                                                <History size={12} />
+                                                <span>版本记录</span>
+                                                {(shot.promptVersions?.length || 0) > 0 && (
+                                                    <span className="text-[10px] px-1 rounded-full bg-slate-600 text-slate-200">{shot.promptVersions!.length}</span>
+                                                )}
+                                            </button>
+                                            {versionPopoverShotId === shot.id && (
+                                                <div className="absolute left-0 top-full mt-1 w-80 max-h-64 overflow-y-auto bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-40 custom-scrollbar">
+                                                    {(shot.promptVersions?.length || 0) === 0 ? (
+                                                        <div className="p-3 text-xs text-slate-500">暂无保存的版本，点击「保存提示词」记录当前内容。</div>
+                                                    ) : (
+                                                        shot.promptVersions!.map((v, i) => (
+                                                            <button
+                                                                key={v.id}
+                                                                onClick={() => handleRestorePromptVersion(shot.id, v)}
+                                                                className="w-full text-left px-3 py-2 hover:bg-slate-800 border-b border-slate-800/50 last:border-0 transition-colors"
+                                                                title="点击恢复该版本"
+                                                            >
+                                                                <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                                                                    <span className="font-bold text-slate-300">版本 {shot.promptVersions!.length - i}</span>
+                                                                    <span>{new Date(v.savedAt).toLocaleString()}</span>
+                                                                </div>
+                                                                <div className="text-xs text-slate-400 line-clamp-2">{v.text}</div>
+                                                            </button>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     
                                     {/* 3 Separate Generate Buttons */}
@@ -987,7 +1258,7 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                                 {/* Auto-growing Prompt Editor (Grid Method) */}
                                 <div className="relative w-full min-h-[7rem] border border-slate-800 rounded-lg bg-slate-950 grid grid-cols-1 overflow-hidden transition-all focus-within:ring-1 focus-within:ring-blue-500/50">
                                     {/* Replicator / Display */}
-                                    <div className={`p-3 text-sm font-mono leading-relaxed whitespace-pre-wrap break-words col-start-1 row-start-1 ${isEditing ? 'invisible' : 'text-slate-200'} custom-scrollbar`}>
+                                    <div className={`p-3 ${fontSizeClass(cfg.fontSize)} font-mono leading-relaxed whitespace-pre-wrap break-words col-start-1 row-start-1 ${isEditing ? 'invisible' : 'text-slate-200'} custom-scrollbar`}>
                                         {isEditing ? shot.description + ' ' : renderHighlightedPrompt(shot.description)}
                                     </div>
                                     
@@ -996,12 +1267,35 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                                         <textarea 
                                             value={shot.description}
                                             onChange={(e) => handleShotPromptChange(shot.id, e.target.value)}
-                                            className="w-full h-full p-3 bg-transparent text-sm font-mono leading-relaxed text-slate-200 caret-blue-500 focus:outline-none resize-none overflow-hidden col-start-1 row-start-1"
+                                            className={`w-full h-full p-3 bg-transparent ${fontSizeClass(cfg.fontSize)} font-mono leading-relaxed text-slate-200 caret-blue-500 focus:outline-none resize-none overflow-hidden col-start-1 row-start-1`}
                                             autoFocus
                                             spellCheck={false}
                                         />
                                     )}
                                 </div>
+
+                                {/* Gen Params Row: model / ratio / resolution / duration + font size */}
+                                <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {renderParamSelect(<Cpu size={12} className="text-slate-500" />, cfg.model, MODEL_OPTIONS, v => updateGenConfig(shot.id, { model: v }), '模型')}
+                                        {renderParamSelect(<Ratio size={12} className="text-slate-500" />, cfg.ratio, RATIO_OPTIONS, v => updateGenConfig(shot.id, { ratio: v }), '画面比例')}
+                                        {renderParamSelect(<Monitor size={12} className="text-slate-500" />, cfg.resolution, RESOLUTION_OPTIONS, v => updateGenConfig(shot.id, { resolution: v }), '分辨率')}
+                                        {renderParamSelect(<Clock size={12} className="text-slate-500" />, cfg.duration, DURATION_OPTIONS, v => updateGenConfig(shot.id, { duration: v }), '生成秒数')}
+                                    </div>
+                                    <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg overflow-hidden" title="提示词字号">
+                                        {(['sm', 'md', 'lg'] as const).map(s => (
+                                            <button
+                                                key={s}
+                                                onClick={() => updateGenConfig(shot.id, { fontSize: s })}
+                                                className={`px-2.5 py-1 text-xs transition-colors ${cfg.fontSize === s ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                                            >
+                                                {s === 'sm' ? '小' : s === 'md' ? '中' : '大'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Front / Back Prompts applied globally via 前后提示词 modal */}
 
                                 <div className="mt-auto pt-4 border-t border-slate-800/50">
                                     <div className="flex items-center gap-2 mb-3">
@@ -1419,6 +1713,140 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
              </div>
          </div>
       )}
+
+      {/* Front/Back Prompt Settings Modal */}
+      {fbModalOpen && (
+         <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-6">
+            <div className="bg-slate-900 w-full max-w-md rounded-xl border border-slate-700 shadow-2xl p-6 animate-scale-in">
+               
+               <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                     <FileText size={18} className="text-emerald-400" />
+                     <h3 className="text-lg font-bold text-white">前后提示词设置</h3>
+                  </div>
+                  <button onClick={() => setFbModalOpen(false)} className="text-slate-500 hover:text-white transition-colors">
+                     <X size={18} />
+                  </button>
+               </div>
+
+               <div className="space-y-4">
+                  {/* Enable Toggle */}
+                  <div className="flex items-center justify-between bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3">
+                     <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-300">提示词追加状态</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${fbDraftEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
+                           {fbDraftEnabled ? '已启用' : '已关闭'}
+                        </span>
+                     </div>
+                     <button
+                        onClick={() => setFbDraftEnabled(!fbDraftEnabled)}
+                        className={`relative w-11 h-6 rounded-full transition-colors ${fbDraftEnabled ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                        title={fbDraftEnabled ? '关闭追加' : '开启追加'}
+                     >
+                        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${fbDraftEnabled ? 'left-[22px]' : 'left-0.5'}`} />
+                     </button>
+                  </div>
+
+                  {/* Front Prompt */}
+                  <div>
+                     <label className="text-sm font-medium text-slate-300 mb-1.5 flex items-baseline gap-2">
+                        前缀提示词
+                        <span className="text-[10px] text-slate-500 font-normal">（追加到分镜提示词最前面）</span>
+                     </label>
+                     <textarea
+                        value={fbDraftFront}
+                        onChange={(e) => setFbDraftFront(e.target.value)}
+                        placeholder="输入前缀提示词内容..."
+                        rows={3}
+                        className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 outline-none transition-all resize-none"
+                     />
+                  </div>
+
+                  {/* Back Prompt */}
+                  <div>
+                     <label className="text-sm font-medium text-slate-300 mb-1.5 flex items-baseline gap-2">
+                        后缀提示词
+                        <span className="text-[10px] text-slate-500 font-normal">（追加到分镜提示词最后面）</span>
+                     </label>
+                     <textarea
+                        value={fbDraftBack}
+                        onChange={(e) => setFbDraftBack(e.target.value)}
+                        placeholder="输入后缀提示词内容..."
+                        rows={3}
+                        className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 outline-none transition-all resize-none"
+                     />
+                  </div>
+               </div>
+
+               <div className="mt-6 flex justify-end gap-3">
+                  <button
+                     onClick={() => setFbModalOpen(false)}
+                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors"
+                  >
+                     取消
+                  </button>
+                  <button
+                     onClick={handleSaveFrontBack}
+                     className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-emerald-900/20 transition-all active:scale-95"
+                  >
+                     <Save size={14} />
+                     <span>保存</span>
+                  </button>
+               </div>
+            </div>
+         </div>
+      )}
+
+      {/* Preview All Episodes Modal */}
+      {previewAllOpen && (() => {
+         const completed = (activeEpisode?.shots || []).filter(s => s.status === 'COMPLETED' && getShotVersions(s).length > 0);
+         if (completed.length === 0) return null;
+         const idx = Math.min(previewAllIndex, completed.length - 1);
+         const shot = completed[idx];
+         const versions = getShotVersions(shot);
+         const url = versions[activeVideoIndices[shot.id] ?? (versions.length - 1)];
+         return (
+            <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in p-6">
+               <div className="bg-slate-900 w-full max-w-4xl rounded-xl border border-slate-700 shadow-2xl overflow-hidden animate-scale-in">
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800">
+                     <div className="flex items-center gap-2 text-white font-bold">
+                        <Play size={16} className="text-purple-400" />
+                        <span>预览全集 · {activeEpisode?.name}</span>
+                     </div>
+                     <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-400">{idx + 1} / {completed.length}</span>
+                        <button onClick={() => setPreviewAllOpen(false)} className="text-slate-500 hover:text-white transition-colors">
+                           <X size={18} />
+                        </button>
+                     </div>
+                  </div>
+                  <div className="aspect-video bg-black relative">
+                     <img src={url} alt="" className="w-full h-full object-contain" />
+                     <div className="absolute top-2 left-2 bg-black/60 backdrop-blur px-2 py-0.5 rounded text-xs text-white font-mono border border-white/10 pointer-events-none">
+                        SHOT {String((activeEpisode?.shots.findIndex(s => s.id === shot.id) ?? 0) + 1).padStart(2, '0')}
+                     </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 px-5 py-3">
+                     <button
+                        onClick={() => setPreviewAllIndex((idx - 1 + completed.length) % completed.length)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 text-sm transition-colors shrink-0"
+                     >
+                        <ChevronLeft size={16} />
+                        <span>上一个</span>
+                     </button>
+                     <span className="text-xs text-slate-500 truncate">{shot.description}</span>
+                     <button
+                        onClick={() => setPreviewAllIndex((idx + 1) % completed.length)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 text-sm transition-colors shrink-0"
+                     >
+                        <span>下一个</span>
+                        <ChevronRight size={16} />
+                     </button>
+                  </div>
+               </div>
+            </div>
+         );
+      })()}
 
       </div>
     </div>
