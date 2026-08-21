@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Material, MaterialType } from '../types';
-import { Mic, Music, Volume2, Image as ImageIcon, ChevronLeft, Upload, Trash2, X, Plus, Film, RotateCcw, Search } from 'lucide-react';
+import { Mic, Music, Volume2, Image as ImageIcon, Upload, Trash2, X, Plus, Film, RotateCcw, Search } from 'lucide-react';
 import { TAG_TAXONOMY, TagTaxonomy, SfxCategory } from './tagTaxonomy';
 
 export { TAG_TAXONOMY, FLAT_TAXONOMY, SFX_TAXONOMY } from './tagTaxonomy';
@@ -9,7 +9,6 @@ export type { TagTaxonomy, FlatGroup, SfxCategory, SfxGroup, SfxDimension } from
 interface MaterialLibraryProps {
   materials: Material[];
   setMaterials: React.Dispatch<React.SetStateAction<Material[]>>;
-  onBack: () => void;
 }
 
 const TYPE_META: Record<MaterialType, { label: string; icon: React.FC<{ size?: number; className?: string }>; color: string }> = {
@@ -179,7 +178,7 @@ const TaxonomyPicker: React.FC<{
     : <TagFilterPanel taxonomy={taxonomy.groups} selected={selected} onToggle={onToggle} />
 );
 
-const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMaterials, onBack }) => {
+const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMaterials }) => {
   // 默认不选中任何类型，进入为空；选中类型标签后才加载对应素材
   const [typeFilter, setTypeFilter] = useState<MaterialType | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -278,60 +277,47 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
 
   return (
     <div className="h-full flex flex-col bg-theme-page animate-fade-in overflow-hidden">
-      {/* Page Header */}
-      <div className="shrink-0 flex items-center justify-between px-8 py-5 border-b border-theme-border">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
-            title="返回"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-            <Film size={20} className="text-blue-400" />
-            素材库
-          </h1>
+      {/* Type Filter Tabs + Search + Upload */}
+      <div className="shrink-0 px-8 pt-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800 w-fit">
+            {([
+              { key: MaterialType.VOICE, label: '配音' },
+              { key: MaterialType.MUSIC, label: '音乐' },
+              { key: MaterialType.SFX, label: '音效' },
+              { key: MaterialType.IMAGE, label: '图片' },
+            ] as { key: MaterialType; label: string }[]).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => switchTypeFilter(tab.key)}
+                className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  typeFilter === tab.key ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
           <span className="text-xs text-slate-500">{filteredMaterials.length} / {materials.length} 个素材</span>
         </div>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-blue-900/20"
-        >
-          <Upload size={16} />
-          上传素材
-        </button>
-      </div>
-
-      {/* Type Filter Tabs + Search */}
-      <div className="shrink-0 px-8 pt-4 flex items-center justify-between">
-        <div className="flex space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800 w-fit">
-          {([
-            { key: MaterialType.VOICE, label: '配音' },
-            { key: MaterialType.MUSIC, label: '音乐' },
-            { key: MaterialType.SFX, label: '音效' },
-            { key: MaterialType.IMAGE, label: '图片' },
-          ] as { key: MaterialType; label: string }[]).map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => switchTypeFilter(tab.key)}
-              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                typeFilter === tab.key ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <div className="relative">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索本类型素材"
-            className="w-56 bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500 outline-none transition-colors"
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索本类型素材"
+              className="w-56 bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500 outline-none transition-colors"
+            />
+          </div>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-blue-900/20"
+          >
+            <Upload size={16} />
+            上传素材
+          </button>
         </div>
       </div>
 

@@ -354,7 +354,6 @@ const App: React.FC = () => {
           <MaterialLibrary
             materials={materials}
             setMaterials={setMaterials}
-            onBack={() => setCurrentTab(project ? MainTab.ASSETS : MainTab.PROJECTS)}
           />
         );
       default:
@@ -391,6 +390,7 @@ const App: React.FC = () => {
   }
 
   const isProjectActive = project && currentTab !== MainTab.PROJECTS;
+  const isMaterialLib = currentTab === MainTab.MATERIAL_LIB;
 
   return (
     <div className="flex flex-col h-screen w-screen bg-theme-page text-theme-primary overflow-hidden font-sans selection:bg-blue-500/30 animate-fade-in">
@@ -400,7 +400,18 @@ const App: React.FC = () => {
         <div className="h-full flex items-center justify-between px-8 gap-4 w-full">
           
           <div className="flex items-center gap-4">
-             {isProjectActive ? (
+             {isMaterialLib ? (
+                <button
+                  onClick={() => setCurrentTab(project ? MainTab.ASSETS : MainTab.PROJECTS)}
+                  className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+                  title="返回系统首页"
+                >
+                  <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-1.5 rounded-lg shadow-lg shadow-blue-900/20">
+                     <Terminal className="text-white w-6 h-6" />
+                  </div>
+                  <span className="font-bold text-xl tracking-wide text-slate-200 hidden lg:block">FREELITE</span>
+                </button>
+             ) : isProjectActive ? (
                 <div className="flex items-center gap-4">
                    <button 
                     onClick={() => { setProject(null); setCurrentTab(MainTab.PROJECTS); }}
@@ -424,7 +435,12 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex-1 flex justify-center">
-             {isProjectActive ? (
+             {isMaterialLib ? (
+                <div className="flex items-center gap-2">
+                   <Library size={18} className="text-blue-400" />
+                   <span className="text-lg font-bold text-slate-100">素材库</span>
+                </div>
+             ) : isProjectActive ? (
                 isExternalView ? (
                    <div className="flex items-center gap-3">
                       <div className="bg-orange-500/10 border border-orange-500/20 px-4 py-2 rounded-lg flex items-center gap-2">
@@ -529,7 +545,7 @@ const App: React.FC = () => {
              <div className="flex items-center gap-2 relative">
                 <button
                   onClick={() => setCurrentTab(MainTab.MATERIAL_LIB)}
-                  className="flex items-center gap-1.5 p-2 text-slate-500 hover:text-blue-400 transition-colors"
+                  className={`flex items-center gap-1.5 p-2 transition-colors ${currentTab === MainTab.MATERIAL_LIB ? 'text-blue-400' : 'text-slate-500 hover:text-blue-400'}`}
                   title="素材库"
                 >
                   <Library size={18} />
