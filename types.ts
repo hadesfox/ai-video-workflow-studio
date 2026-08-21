@@ -13,7 +13,6 @@ export enum MaterialType {
   VOICE = 'VOICE',   // 配音
   MUSIC = 'MUSIC',   // 音乐
   SFX = 'SFX',       // 音效
-  VIDEO = 'VIDEO',   // 视频
   IMAGE = 'IMAGE'    // 图片
 }
 

@@ -1,6 +1,10 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Material, MaterialType } from '../types';
-import { Mic, Music, Volume2, Video, Image as ImageIcon, ChevronLeft, Upload, Trash2, X, Plus, Film, RotateCcw } from 'lucide-react';
+import { Mic, Music, Volume2, Image as ImageIcon, ChevronLeft, Upload, Trash2, X, Plus, Film, RotateCcw, Search } from 'lucide-react';
+import { TAG_TAXONOMY, TagTaxonomy, SfxCategory } from './tagTaxonomy';
+
+export { TAG_TAXONOMY, FLAT_TAXONOMY, SFX_TAXONOMY } from './tagTaxonomy';
+export type { TagTaxonomy, FlatGroup, SfxCategory, SfxGroup, SfxDimension } from './tagTaxonomy';
 
 interface MaterialLibraryProps {
   materials: Material[];
@@ -12,35 +16,7 @@ const TYPE_META: Record<MaterialType, { label: string; icon: React.FC<{ size?: n
   [MaterialType.VOICE]: { label: '配音', icon: Mic, color: 'text-blue-400' },
   [MaterialType.MUSIC]: { label: '音乐', icon: Music, color: 'text-purple-400' },
   [MaterialType.SFX]: { label: '音效', icon: Volume2, color: 'text-pink-400' },
-  [MaterialType.VIDEO]: { label: '视频', icon: Video, color: 'text-emerald-400' },
   [MaterialType.IMAGE]: { label: '图片', icon: ImageIcon, color: 'text-amber-400' },
-};
-
-// 各素材类型的标签分类体系（筛选 + 上传打标签共用）
-export const TAG_TAXONOMY: Record<MaterialType, { label: string; tags: string[] }[]> = {
-  [MaterialType.VOICE]: [
-    { label: '音色', tags: ['女声', '男声', '童声', '角色演绎', '多风格', '特邀大咖'] },
-    { label: '场景', tags: ['解说', '影视动漫', '情感', '娱乐', '营销', '新闻', '游戏', '趣味歌咏'] },
-    { label: '语言', tags: ['方言', '外语'] },
-    { label: '推荐', tags: ['热门', '最新', '超仿真'] },
-  ],
-  [MaterialType.MUSIC]: [
-    { label: '风格', tags: ['流行', '摇滚', '电子', '古典', '民谣', '爵士', '说唱', '纯音乐'] },
-    { label: '情绪', tags: ['欢快', '温馨', '悲伤', '紧张', '史诗', '神秘'] },
-    { label: '场景', tags: ['片头', '战斗', '抒情', '预告', 'Vlog', '片尾'] },
-  ],
-  [MaterialType.SFX]: [
-    { label: '场景', tags: ['游戏音效', '人类声音', '动物声音', '环境声音', '日常生活', '交通工具', '生产办公', '体育竞技'] },
-    { label: '类型', tags: ['打击', '爆炸', '摩擦', '机械', '电子', '自然', '人声'] },
-  ],
-  [MaterialType.VIDEO]: [
-    { label: '类型', tags: ['实拍', '动画', '特效', '转场', '空镜'] },
-    { label: '场景', tags: ['城市', '自然', '科技', '人物', '美食'] },
-  ],
-  [MaterialType.IMAGE]: [
-    { label: '类型', tags: ['照片', '插画', '三维', '纹理', '图标'] },
-    { label: '风格', tags: ['写实', '赛博朋克', '国风', '扁平', '复古'] },
-  ],
 };
 
 export type DurationFilter = 'ALL' | 'SHORT' | 'MEDIUM' | 'LONG';
@@ -57,7 +33,6 @@ export const HAS_DURATION: Record<MaterialType, boolean> = {
   [MaterialType.VOICE]: true,
   [MaterialType.MUSIC]: true,
   [MaterialType.SFX]: true,
-  [MaterialType.VIDEO]: true,
   [MaterialType.IMAGE]: false,
 };
 
@@ -97,16 +72,16 @@ export const formatDuration = (seconds?: number) => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-// 标签分类筛选面板（素材库与配音绑定弹窗共用）
+// 扁平标签筛选面板（音乐/配音/图片共用）
 export const TagFilterPanel: React.FC<{
   taxonomy: { label: string; tags: string[] }[];
   selected: string[];
   onToggle: (tag: string) => void;
 }> = ({ taxonomy, selected, onToggle }) => (
-  <div className="space-y-2">
+  <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
     {taxonomy.map(group => (
       <div key={group.label} className="flex items-start gap-3">
-        <span className="text-xs font-bold text-blue-400 w-10 shrink-0 pt-1">{group.label}</span>
+        <span className="text-xs font-bold text-blue-400 w-20 shrink-0 pt-1">{group.label}</span>
         <div className="flex flex-wrap gap-1.5">
           {group.tags.map(tag => {
             const active = selected.includes(tag);
@@ -130,12 +105,87 @@ export const TagFilterPanel: React.FC<{
   </div>
 );
 
+// 音效三级标签筛选面板：左侧一级分类导航 + 右侧分组/维度/标签
+export const SfxTagFilterPanel: React.FC<{
+  categories: SfxCategory[];
+  selected: string[];
+  onToggle: (tag: string) => void;
+}> = ({ categories, selected, onToggle }) => {
+  const [activeCategory, setActiveCategory] = useState<string>(categories[0]?.label || '');
+  const category = categories.find(c => c.label === activeCategory) || categories[0];
+
+  return (
+    <div className="flex gap-4">
+      {/* 左侧分类导航 */}
+      <div className="w-28 shrink-0 space-y-1 border-r border-white/5 pr-3">
+        {categories.map(c => (
+          <button
+            key={c.label}
+            onClick={() => setActiveCategory(c.label)}
+            className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs transition-colors ${
+              activeCategory === c.label
+                ? 'bg-blue-600 text-white'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 右侧分组/维度/标签 */}
+      <div className="flex-1 space-y-4 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+        {category?.groups.map(group => (
+          <div key={group.label} className="space-y-2">
+            <div className="text-xs font-bold text-slate-300">{group.label}</div>
+            {group.dimensions.map(dim => (
+              <div key={dim.label || group.label} className="flex items-start gap-3">
+                {dim.label && <span className="text-xs font-bold text-blue-400 w-12 shrink-0 pt-1">{dim.label}</span>}
+                <div className="flex flex-wrap gap-1.5">
+                  {dim.tags.map(tag => {
+                    const active = selected.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => onToggle(tag)}
+                        className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
+                          active
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// 根据分类体系类型分发渲染（tree 用音效面板，flat 用普通面板）
+const TaxonomyPicker: React.FC<{
+  taxonomy: TagTaxonomy;
+  selected: string[];
+  onToggle: (tag: string) => void;
+}> = ({ taxonomy, selected, onToggle }) => (
+  taxonomy.type === 'tree'
+    ? <SfxTagFilterPanel categories={taxonomy.categories} selected={selected} onToggle={onToggle} />
+    : <TagFilterPanel taxonomy={taxonomy.groups} selected={selected} onToggle={onToggle} />
+);
+
 const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMaterials, onBack }) => {
   // 默认不选中任何类型，进入为空；选中类型标签后才加载对应素材
   const [typeFilter, setTypeFilter] = useState<MaterialType | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [durationFilter, setDurationFilter] = useState<DurationFilter>('ALL');
   const [sortBy, setSortBy] = useState<SortBy>('NEWEST');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   // Upload form state
@@ -151,19 +201,27 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
     setTypeFilter(t);
     setSelectedTags([]);
     setDurationFilter('ALL');
+    setSearchQuery('');
   };
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(x => x !== tag) : [...prev, tag]);
   };
 
-  const hasActiveFilters = selectedTags.length > 0 || durationFilter !== 'ALL';
+  const hasActiveFilters = selectedTags.length > 0 || durationFilter !== 'ALL' || searchQuery.trim().length > 0;
 
   const filteredMaterials = useMemo(() => {
     if (!typeFilter) return [];
-    const list = materials.filter(m => m.type === typeFilter);
+    let list = materials.filter(m => m.type === typeFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(m =>
+        m.name.toLowerCase().includes(q) ||
+        (m.fileName || '').toLowerCase().includes(q)
+      );
+    }
     return applyMaterialFilters(list, selectedTags, durationFilter, sortBy);
-  }, [materials, typeFilter, selectedTags, durationFilter, sortBy]);
+  }, [materials, typeFilter, selectedTags, durationFilter, sortBy, searchQuery]);
 
   const resetUploadForm = () => {
     setUploadType(MaterialType.VOICE);
@@ -187,15 +245,8 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
       setUploadUrl(dataUrl);
       // 读取音/视频时长
       if (HAS_DURATION[uploadType]) {
-        if (uploadType === MaterialType.VIDEO) {
-          const video = document.createElement('video');
-          video.preload = 'metadata';
-          video.onloadedmetadata = () => setUploadDuration(video.duration);
-          video.src = dataUrl;
-        } else {
-          const audio = new Audio(dataUrl);
-          audio.onloadedmetadata = () => setUploadDuration(audio.duration);
-        }
+        const audio = new Audio(dataUrl);
+        audio.onloadedmetadata = () => setUploadDuration(audio.duration);
       }
     };
     reader.readAsDataURL(file);
@@ -252,14 +303,13 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
         </button>
       </div>
 
-      {/* Type Filter Tabs */}
-      <div className="shrink-0 px-8 pt-4">
+      {/* Type Filter Tabs + Search */}
+      <div className="shrink-0 px-8 pt-4 flex items-center justify-between">
         <div className="flex space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800 w-fit">
           {([
             { key: MaterialType.VOICE, label: '配音' },
             { key: MaterialType.MUSIC, label: '音乐' },
             { key: MaterialType.SFX, label: '音效' },
-            { key: MaterialType.VIDEO, label: '视频' },
             { key: MaterialType.IMAGE, label: '图片' },
           ] as { key: MaterialType; label: string }[]).map(tab => (
             <button
@@ -273,12 +323,22 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
             </button>
           ))}
         </div>
+        <div className="relative">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="搜索本类型素材"
+            className="w-56 bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500 outline-none transition-colors"
+          />
+        </div>
       </div>
 
       {/* Tag Classification & Filter Panel (per type) */}
       {typeFilter && (
         <div className="shrink-0 mx-8 mt-4 p-4 bg-theme-card/60 border border-theme-border rounded-xl space-y-3">
-          <TagFilterPanel taxonomy={TAG_TAXONOMY[typeFilter]} selected={selectedTags} onToggle={toggleTag} />
+          <TaxonomyPicker taxonomy={TAG_TAXONOMY[typeFilter]} selected={selectedTags} onToggle={toggleTag} />
 
           {/* Filter Params Row */}
           <div className="flex items-center gap-3 pt-3 border-t border-white/5">
@@ -345,8 +405,6 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
                   <div className="aspect-video bg-black/40 flex items-center justify-center relative overflow-hidden">
                     {m.type === MaterialType.IMAGE ? (
                       <img src={m.url} alt={m.name} className="w-full h-full object-cover" />
-                    ) : m.type === MaterialType.VIDEO ? (
-                      <video src={m.url} className="w-full h-full object-contain" controls preload="metadata" />
                     ) : (
                       <div className="flex flex-col items-center gap-2 w-full px-3">
                         <TypeIcon size={28} className={meta.color} />
@@ -440,7 +498,6 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
                   <option value={MaterialType.VOICE}>配音</option>
                   <option value={MaterialType.MUSIC}>音乐</option>
                   <option value={MaterialType.SFX}>音效</option>
-                  <option value={MaterialType.VIDEO}>视频</option>
                   <option value={MaterialType.IMAGE}>图片</option>
                 </select>
               </div>
@@ -461,7 +518,7 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase">标签分类（可多选）</label>
                 <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
-                  <TagFilterPanel
+                  <TaxonomyPicker
                     taxonomy={TAG_TAXONOMY[uploadType]}
                     selected={uploadTags}
                     onToggle={(tag) => setUploadTags(prev => prev.includes(tag) ? prev.filter(x => x !== tag) : [...prev, tag])}
@@ -475,10 +532,7 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept={
-                    uploadType === MaterialType.IMAGE ? 'image/*' :
-                    uploadType === MaterialType.VIDEO ? 'video/*' : 'audio/*'
-                  }
+                  accept={uploadType === MaterialType.IMAGE ? 'image/*' : 'audio/*'}
                   onChange={handleFileSelect}
                   className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600/20 file:text-blue-400 file:text-xs file:font-bold file:cursor-pointer hover:file:bg-blue-600/30 file:transition-colors"
                 />

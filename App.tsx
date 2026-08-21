@@ -37,25 +37,22 @@ const createDemoMaterials = (): Material[] => {
   const now = Date.now();
   const day = 86400000;
   return [
-    // Dubbing
-    { id: 'demo-voice-1', name: 'Sweet female voice · Narration', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', fileName: 'tianmei-nvsheng.mp3', duration: 15, size: 245000, tags: ['Female voice', 'Narration', 'Popular'], createdAt: now - day },
-    { id: 'demo-voice-2', name: 'Magnetic male voice · Documentary', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', fileName: 'cixing-nansheng.mp3', duration: 32, size: 512000, tags: ['Male voice', 'Narration', 'Ultra-realistic'], createdAt: now - day * 2 },
-    { id: 'demo-voice-3', name: 'Anime child voice', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', fileName: 'dongman-tongsheng.mp3', duration: 8, size: 130000, tags: ['Child voice', 'Anime', 'Character acting'], createdAt: now - day * 3 },
-    { id: 'demo-voice-4', name: 'Dialect storytelling master', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', fileName: 'fangyan-pingshu.mp3', duration: 75, size: 1200000, tags: ['Male voice', 'Dialect', 'Entertainment'], createdAt: now - day * 4 },
-    // Music
-    { id: 'demo-music-1', name: 'Epic battle BGM', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', fileName: 'epic-battle.mp3', duration: 60, size: 960000, tags: ['Epic', 'Battle', 'Rock'], createdAt: now - day * 2 },
-    { id: 'demo-music-2', name: 'Warm healing piano', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', fileName: 'warm-piano.mp3', duration: 95, size: 1520000, tags: ['Warm', 'Emotional', 'Instrumental'], createdAt: now - day * 5 },
-    { id: 'demo-music-3', name: 'Tense suspense electronic', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', fileName: 'tense-electronic.mp3', duration: 30, size: 480000, tags: ['Tense', 'Trailer', 'Electronic'], createdAt: now - day },
-    // Sound effects
-    { id: 'demo-sfx-1', name: 'Game hit sound effect', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', fileName: 'game-daji.mp3', duration: 2, size: 32000, tags: ['Game SFX', 'Hit'], createdAt: now - day * 3 },
-    { id: 'demo-sfx-2', name: 'Rain ambient sound', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3', fileName: 'yusheng-huanjing.mp3', duration: 65, size: 1040000, tags: ['Environmental sound', 'Nature'], createdAt: now - day * 6 },
-    { id: 'demo-sfx-3', name: 'Whoosh transition sound', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3', fileName: 'whoosh.mp3', duration: 3, size: 48000, tags: ['Electronic', 'Friction'], createdAt: now - day },
-    // Video
-    { id: 'demo-video-1', name: 'City nightscape aerial shot', type: MaterialType.VIDEO, url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', fileName: 'city-night.mp4', duration: 15, size: 2400000, tags: ['Live action', 'City'], createdAt: now - day * 2 },
-    { id: 'demo-video-2', name: 'Sci-fi particle transition', type: MaterialType.VIDEO, url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', fileName: 'scifi-transition.mp4', duration: 5, size: 800000, tags: ['VFX', 'Transition', 'Tech'], createdAt: now - day * 4 },
-    // Image
-    { id: 'demo-image-1', name: 'Cyberpunk street illustration', type: MaterialType.IMAGE, url: 'https://picsum.photos/seed/cyberpunk-street/640/360', fileName: 'cyberpunk.jpg', tags: ['Illustration', 'Cyberpunk'], createdAt: now - day * 2 },
-    { id: 'demo-image-2', name: 'Chinese-style landscape texture', type: MaterialType.IMAGE, url: 'https://picsum.photos/seed/guofeng-shanshui/640/360', fileName: 'guofeng.jpg', tags: ['Texture', 'Chinese style'], createdAt: now - day * 7 },
+    // 配音
+    { id: 'demo-voice-1', name: '甜美女声 · 解说', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', fileName: 'tianmei-nvsheng.mp3', duration: 15, size: 245000, tags: ['女声', '甜美', '朗诵', '普通话'], createdAt: now - day },
+    { id: 'demo-voice-2', name: '磁性男声 · 纪录片', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', fileName: 'cixing-nansheng.mp3', duration: 32, size: 512000, tags: ['男声', '纪录片', '儒雅', '普通话'], createdAt: now - day * 2 },
+    { id: 'demo-voice-3', name: '动漫童声', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', fileName: 'dongman-tongsheng.mp3', duration: 8, size: 130000, tags: ['儿童', '动漫', '欢快', '普通话'], createdAt: now - day * 3 },
+    { id: 'demo-voice-4', name: '方言评书', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', fileName: 'fangyan-pingshu.mp3', duration: 75, size: 1200000, tags: ['男声', '评书', '四川话'], createdAt: now - day * 4 },
+    // 音乐
+    { id: 'demo-music-1', name: '史诗战斗配乐', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', fileName: 'epic-battle.mp3', duration: 60, size: 960000, tags: ['史诗', '战争', '片头', '交响乐', '鼓'], createdAt: now - day * 2 },
+    { id: 'demo-music-2', name: '温馨治愈钢琴', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', fileName: 'warm-piano.mp3', duration: 95, size: 1520000, tags: ['感人', '安静', '轻音乐', '钢琴'], createdAt: now - day * 5 },
+    { id: 'demo-music-3', name: '紧张悬疑电子', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', fileName: 'tense-electronic.mp3', duration: 30, size: 480000, tags: ['紧张', '悬疑', '电子', '合成器'], createdAt: now - day },
+    // 音效
+    { id: 'demo-sfx-1', name: '游戏重击音效', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', fileName: 'game-daji.mp3', duration: 2, size: 32000, tags: ['重击', '魔法'], createdAt: now - day * 3 },
+    { id: 'demo-sfx-2', name: '雨声环境音', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3', fileName: 'yusheng-huanjing.mp3', duration: 65, size: 1040000, tags: ['雨'], createdAt: now - day * 6 },
+    { id: 'demo-sfx-3', name: '风声呼啸', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3', fileName: 'whoosh.mp3', duration: 3, size: 48000, tags: ['风'], createdAt: now - day },
+    // 图片
+    { id: 'demo-image-1', name: '赛博朋克街道', type: MaterialType.IMAGE, url: 'https://picsum.photos/seed/cyberpunk-street/640/360', fileName: 'cyberpunk.jpg', tags: ['场景', '写实', '赛博朋克', '城市'], createdAt: now - day * 2 },
+    { id: 'demo-image-2', name: '国风山水', type: MaterialType.IMAGE, url: 'https://picsum.photos/seed/guofeng-shanshui/640/360', fileName: 'guofeng.jpg', tags: ['自然', '水墨'], createdAt: now - day * 7 },
   ];
 };
 

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Asset, AssetState, AssetSubTab, WorldviewEntry, Material, MaterialType } from '../types';
-import { TAG_TAXONOMY, DURATION_FILTERS, applyMaterialFilters, TagFilterPanel, formatDuration, DurationFilter, SortBy } from './MaterialLibrary';
+import { FLAT_TAXONOMY, DURATION_FILTERS, applyMaterialFilters, TagFilterPanel, formatDuration, DurationFilter, SortBy } from './MaterialLibrary';
 import { Layers, RefreshCw, Mic, Volume2, Sparkles, FileSearch, ImagePlus, User, Map, Box, X, ChevronRight, Check, Search, Settings2, Trash2, CheckSquare, Square, LayoutTemplate, List, Play, Upload, Plus, Loader2, Globe2, FileText, File, Palette, Download, Eye, AlignLeft, Link2 } from 'lucide-react';
 
 interface AssetManagementProps {
@@ -1382,7 +1382,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
             {/* Tag Classification & Filter Params (same as material library) */}
             <div className="shrink-0 px-6 py-4 border-b border-white/5 space-y-3">
               <TagFilterPanel
-                taxonomy={TAG_TAXONOMY[MaterialType.VOICE]}
+                taxonomy={FLAT_TAXONOMY.VOICE}
                 selected={voiceTagFilter}
                 onToggle={(tag) => setVoiceTagFilter(prev => prev.includes(tag) ? prev.filter(x => x !== tag) : [...prev, tag])}
               />
