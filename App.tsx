@@ -38,10 +38,10 @@ const createDemoMaterials = (): Material[] => {
   const day = 86400000;
   return [
     // 配音
-    { id: 'demo-voice-1', name: '甜美女声 · 解说', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', fileName: 'tianmei-nvsheng.mp3', duration: 15, size: 245000, tags: ['女声', '甜美', '朗诵', '普通话'], createdAt: now - day },
-    { id: 'demo-voice-2', name: '磁性男声 · 纪录片', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', fileName: 'cixing-nansheng.mp3', duration: 32, size: 512000, tags: ['男声', '纪录片', '儒雅', '普通话'], createdAt: now - day * 2 },
-    { id: 'demo-voice-3', name: '动漫童声', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', fileName: 'dongman-tongsheng.mp3', duration: 8, size: 130000, tags: ['儿童', '动漫', '欢快', '普通话'], createdAt: now - day * 3 },
-    { id: 'demo-voice-4', name: '方言评书', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', fileName: 'fangyan-pingshu.mp3', duration: 75, size: 1200000, tags: ['男声', '评书', '四川话'], createdAt: now - day * 4 },
+    { id: 'demo-voice-1', name: '甜美女声 · 剧情解说', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', fileName: 'tianmei-nvsheng.mp3', duration: 15, size: 245000, tags: ['剧情解说', '甜美', '女声', '青年', '中文'], createdAt: now - day },
+    { id: 'demo-voice-2', name: '磁性男声 · 旁白', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', fileName: 'cixing-nansheng.mp3', duration: 32, size: 512000, tags: ['旁白', '磁性', '男声', '中年', '中文'], createdAt: now - day * 2 },
+    { id: 'demo-voice-3', name: '可爱孩童对白', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', fileName: 'dongman-tongsheng.mp3', duration: 8, size: 130000, tags: ['角色对白', '可爱', '孩童', '儿童', '中文'], createdAt: now - day * 3 },
+    { id: 'demo-voice-4', name: '四川话评书', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', fileName: 'fangyan-pingshu.mp3', duration: 75, size: 1200000, tags: ['旁白', '沉稳', '男声', '中年', '四川话'], createdAt: now - day * 4 },
     // 音乐
     { id: 'demo-music-1', name: '史诗战斗配乐', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', fileName: 'epic-battle.mp3', duration: 60, size: 960000, tags: ['史诗', '战争', '片头', '交响乐', '鼓'], createdAt: now - day * 2 },
     { id: 'demo-music-2', name: '温馨治愈钢琴', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', fileName: 'warm-piano.mp3', duration: 95, size: 1520000, tags: ['感人', '安静', '轻音乐', '钢琴'], createdAt: now - day * 5 },
