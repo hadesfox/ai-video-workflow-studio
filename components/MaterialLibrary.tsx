@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Material, MaterialType } from '../types';
 import { Mic, Music, Volume2, Image as ImageIcon, Upload, Trash2, X, Plus, Film, RotateCcw, Search } from 'lucide-react';
 import { TAG_TAXONOMY, TagTaxonomy, SfxCategory } from './tagTaxonomy';
+import AudioWaveform from './AudioWaveform';
 
 export { TAG_TAXONOMY, FLAT_TAXONOMY, SFX_TAXONOMY } from './tagTaxonomy';
 export type { TagTaxonomy, FlatGroup, SfxCategory, SfxGroup, SfxDimension } from './tagTaxonomy';
@@ -232,23 +233,51 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // 接收文件：读取预览、时长与大小
+  const acceptFile = (file: File, knownDuration?: number) => {
     setUploadFile(file);
     if (!uploadName) setUploadName(file.name.replace(/\.[^.]+$/, ''));
-
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
       setUploadUrl(dataUrl);
-      // 读取音/视频时长
-      if (HAS_DURATION[uploadType]) {
+      if (knownDuration !== undefined) {
+        setUploadDuration(knownDuration);
+      } else if (HAS_DURATION[uploadType]) {
         const audio = new Audio(dataUrl);
         audio.onloadedmetadata = () => setUploadDuration(audio.duration);
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 配音：时长限制 2-5 秒，读取元数据校验通过后再接收
+    if (uploadType === MaterialType.VOICE) {
+      const objectUrl = URL.createObjectURL(file);
+      const audio = new Audio(objectUrl);
+      audio.onloadedmetadata = () => {
+        const dur = audio.duration;
+        URL.revokeObjectURL(objectUrl);
+        if (dur < 2 || dur > 5) {
+          alert(`配音时长需在 2-5 秒之间，当前为 ${dur.toFixed(1)} 秒`);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          return;
+        }
+        acceptFile(file, dur);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        alert('无法读取音频时长，请重新选择文件');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+      return;
+    }
+
+    acceptFile(file);
   };
 
   const handleConfirmUpload = () => {
@@ -391,10 +420,18 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
                   <div className="aspect-video bg-black/40 flex items-center justify-center relative overflow-hidden">
                     {m.type === MaterialType.IMAGE ? (
                       <img src={m.url} alt={m.name} className="w-full h-full object-cover" />
-                    ) : (
+                    ) : m.type === MaterialType.VOICE ? (
                       <div className="flex flex-col items-center gap-2 w-full px-3">
                         <TypeIcon size={28} className={meta.color} />
                         <audio src={m.url} controls className="w-full h-8" preload="metadata" />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-2 w-full px-3">
+                        <TypeIcon size={28} className={meta.color} />
+                        <AudioWaveform
+                          url={m.url}
+                          color={m.type === MaterialType.MUSIC ? '#a78bfa' : '#f472b6'}
+                        />
                       </div>
                     )}
                     {/* Delete Button */}

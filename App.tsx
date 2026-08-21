@@ -32,27 +32,113 @@ const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
     return settings;
 };
 
+// ---- 本地真实音频生成（WAV data URL，离线可解码、可绘制波形） ----
+const SAMPLE_RATE = 22050;
+
+const encodeWavDataUrl = (samples: Float32Array): string => {
+  const dataSize = samples.length * 2;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  const ascii = (off: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+  };
+  ascii(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  ascii(8, 'WAVE');
+  ascii(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, SAMPLE_RATE, true);
+  view.setUint32(28, SAMPLE_RATE * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, 'data');
+  view.setUint32(40, dataSize, true);
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x4000) {
+    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x4000)) as number[]);
+  }
+  return 'data:audio/wav;base64,' + btoa(binary);
+};
+
+// 通用采样合成：durationSec 秒，fn 返回 [-1, 1]
+const synth = (durationSec: number, fn: (t: number) => number): string => {
+  const n = Math.floor(durationSec * SAMPLE_RATE);
+  const samples = new Float32Array(n);
+  for (let i = 0; i < n; i++) samples[i] = fn(i / SAMPLE_RATE);
+  return encodeWavDataUrl(samples);
+};
+
+// 音乐：多音符旋律（基频 + 泛音 + 起音/衰减包络）
+const synthMusic = (notes: number[], noteDur: number): string => {
+  const duration = notes.length * noteDur;
+  return synth(duration, (t) => {
+    const idx = Math.min(notes.length - 1, Math.floor(t / noteDur));
+    const localT = t - idx * noteDur;
+    const f = notes[idx];
+    const env = Math.min(1, localT / 0.02) * Math.exp(-localT * 3);
+    const tone = Math.sin(2 * Math.PI * f * t)
+      + 0.5 * Math.sin(2 * Math.PI * f * 2 * t)
+      + 0.25 * Math.sin(2 * Math.PI * f * 3 * t);
+    return 0.5 * env * tone;
+  });
+};
+
+// 音效：重击（噪声衰减 + 低频冲击）
+const synthImpact = (durationSec: number): string => synth(durationSec, (t) => {
+  const noise = Math.random() * 2 - 1;
+  const thump = Math.sin(2 * Math.PI * 55 * t) * Math.exp(-t * 10);
+  return (noise * Math.exp(-t * 18) + thump) * 0.6;
+});
+
+// 音效：持续噪声（雨/风），可选低频调制
+const synthNoise = (durationSec: number, modHz = 0): string => synth(durationSec, (t) => {
+  const noise = Math.random() * 2 - 1;
+  const mod = modHz > 0 ? 0.5 + 0.5 * Math.sin(2 * Math.PI * modHz * t) : 1;
+  return noise * 0.35 * mod;
+});
+
+// 配音：模拟人声语调（基频起伏 + 谐波 + 音节包络）
+const synthVoice = (durationSec: number, baseFreq: number): string => synth(durationSec, (t) => {
+  const f = baseFreq * (1 + 0.15 * Math.sin(2 * Math.PI * 2.2 * t) + 0.08 * Math.sin(2 * Math.PI * 5.5 * t));
+  const syll = 0.5 + 0.5 * Math.sin(2 * Math.PI * 4 * t);
+  const tone = Math.sin(2 * Math.PI * f * t)
+    + 0.4 * Math.sin(2 * Math.PI * f * 2 * t)
+    + 0.15 * Math.sin(2 * Math.PI * f * 3 * t);
+  return 0.45 * syll * tone;
+});
+
+// 本地真实图片（SVG data URL，离线可显示）
+const svgDataUrl = (svg: string): string => 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+
 // Demo placeholder materials (for development demo)
 const createDemoMaterials = (): Material[] => {
   const now = Date.now();
   const day = 86400000;
+  const audioSize = (sec: number) => Math.floor(sec * SAMPLE_RATE * 2);
   return [
-    // 配音
-    { id: 'demo-voice-1', name: '甜美女声 · 剧情解说', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', fileName: 'tianmei-nvsheng.mp3', duration: 15, size: 245000, tags: ['剧情解说', '甜美', '女声', '青年', '中文'], createdAt: now - day },
-    { id: 'demo-voice-2', name: '磁性男声 · 旁白', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', fileName: 'cixing-nansheng.mp3', duration: 32, size: 512000, tags: ['旁白', '磁性', '男声', '中年', '中文'], createdAt: now - day * 2 },
-    { id: 'demo-voice-3', name: '可爱孩童对白', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', fileName: 'dongman-tongsheng.mp3', duration: 8, size: 130000, tags: ['角色对白', '可爱', '孩童', '儿童', '中文'], createdAt: now - day * 3 },
-    { id: 'demo-voice-4', name: '四川话评书', type: MaterialType.VOICE, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', fileName: 'fangyan-pingshu.mp3', duration: 75, size: 1200000, tags: ['旁白', '沉稳', '男声', '中年', '四川话'], createdAt: now - day * 4 },
-    // 音乐
-    { id: 'demo-music-1', name: '史诗战斗配乐', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', fileName: 'epic-battle.mp3', duration: 60, size: 960000, tags: ['史诗', '战争', '片头', '交响乐', '鼓'], createdAt: now - day * 2 },
-    { id: 'demo-music-2', name: '温馨治愈钢琴', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', fileName: 'warm-piano.mp3', duration: 95, size: 1520000, tags: ['感人', '安静', '轻音乐', '钢琴'], createdAt: now - day * 5 },
-    { id: 'demo-music-3', name: '紧张悬疑电子', type: MaterialType.MUSIC, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', fileName: 'tense-electronic.mp3', duration: 30, size: 480000, tags: ['紧张', '悬疑', '电子', '合成器'], createdAt: now - day },
-    // 音效
-    { id: 'demo-sfx-1', name: '游戏重击音效', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', fileName: 'game-daji.mp3', duration: 2, size: 32000, tags: ['重击', '魔法'], createdAt: now - day * 3 },
-    { id: 'demo-sfx-2', name: '雨声环境音', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3', fileName: 'yusheng-huanjing.mp3', duration: 65, size: 1040000, tags: ['雨'], createdAt: now - day * 6 },
-    { id: 'demo-sfx-3', name: '风声呼啸', type: MaterialType.SFX, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3', fileName: 'whoosh.mp3', duration: 3, size: 48000, tags: ['风'], createdAt: now - day },
-    // 图片
-    { id: 'demo-image-1', name: '赛博朋克街道', type: MaterialType.IMAGE, url: 'https://picsum.photos/seed/cyberpunk-street/640/360', fileName: 'cyberpunk.jpg', tags: ['场景', '写实', '赛博朋克', '城市'], createdAt: now - day * 2 },
-    { id: 'demo-image-2', name: '国风山水', type: MaterialType.IMAGE, url: 'https://picsum.photos/seed/guofeng-shanshui/640/360', fileName: 'guofeng.jpg', tags: ['自然', '水墨'], createdAt: now - day * 7 },
+    // 配音（本地真实 WAV，2-5 秒，可试听）
+    { id: 'demo-voice-1', name: '甜美女声 · 剧情解说', type: MaterialType.VOICE, url: synthVoice(4, 300), fileName: 'tianmei-nvsheng.wav', duration: 4, size: audioSize(4), tags: ['剧情解说', '甜美', '女声', '青年', '中文'], createdAt: now - day },
+    { id: 'demo-voice-2', name: '磁性男声 · 旁白', type: MaterialType.VOICE, url: synthVoice(5, 130), fileName: 'cixing-nansheng.wav', duration: 5, size: audioSize(5), tags: ['旁白', '磁性', '男声', '中年', '中文'], createdAt: now - day * 2 },
+    { id: 'demo-voice-3', name: '可爱孩童对白', type: MaterialType.VOICE, url: synthVoice(3, 340), fileName: 'dongman-tongsheng.wav', duration: 3, size: audioSize(3), tags: ['角色对白', '可爱', '孩童', '儿童', '中文'], createdAt: now - day * 3 },
+    { id: 'demo-voice-4', name: '四川话评书', type: MaterialType.VOICE, url: synthVoice(5, 150), fileName: 'fangyan-pingshu.wav', duration: 5, size: audioSize(5), tags: ['旁白', '沉稳', '男声', '中年', '四川话'], createdAt: now - day * 4 },
+    // 音乐（本地真实 WAV，波形可见）
+    { id: 'demo-music-1', name: '史诗战斗配乐', type: MaterialType.MUSIC, url: synthMusic([65.41, 73.42, 82.41, 98.00, 82.41, 73.42], 1), fileName: 'epic-battle.wav', duration: 6, size: audioSize(6), tags: ['史诗', '战争', '片头', '交响乐', '鼓'], createdAt: now - day * 2 },
+    { id: 'demo-music-2', name: '温馨治愈钢琴', type: MaterialType.MUSIC, url: synthMusic([261.63, 329.63, 392.00, 329.63, 293.66, 261.63, 246.94, 293.66, 261.63, 220.00], 1), fileName: 'warm-piano.wav', duration: 10, size: audioSize(10), tags: ['感人', '安静', '轻音乐', '钢琴'], createdAt: now - day * 5 },
+    { id: 'demo-music-3', name: '紧张悬疑电子', type: MaterialType.MUSIC, url: synthMusic([220.00, 233.08, 246.94, 261.63, 277.18, 293.66], 1), fileName: 'tense-electronic.wav', duration: 6, size: audioSize(6), tags: ['紧张', '悬疑', '电子', '合成器'], createdAt: now - day },
+    // 音效（本地真实 WAV，波形可见）
+    { id: 'demo-sfx-1', name: '游戏重击音效', type: MaterialType.SFX, url: synthImpact(2), fileName: 'game-daji.wav', duration: 2, size: audioSize(2), tags: ['重击', '魔法'], createdAt: now - day * 3 },
+    { id: 'demo-sfx-2', name: '雨声环境音', type: MaterialType.SFX, url: synthNoise(8), fileName: 'yusheng-huanjing.wav', duration: 8, size: audioSize(8), tags: ['雨'], createdAt: now - day * 6 },
+    { id: 'demo-sfx-3', name: '风声呼啸', type: MaterialType.SFX, url: synthNoise(3, 0.6), fileName: 'whoosh.wav', duration: 3, size: audioSize(3), tags: ['风'], createdAt: now - day },
+    // 图片（本地真实 SVG，可显示）
+    { id: 'demo-image-1', name: '赛博朋克街道', type: MaterialType.IMAGE, url: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0c29"/><stop offset="0.5" stop-color="#302b63"/><stop offset="1" stop-color="#24243e"/></linearGradient></defs><rect width="640" height="360" fill="url(#bg)"/><text x="320" y="180" fill="#00e5ff" font-size="36" text-anchor="middle" font-family="sans-serif">赛博朋克街道</text><text x="320" y="220" fill="#ff2a6d" font-size="16" text-anchor="middle" font-family="sans-serif">CYBERPUNK STREET</text></svg>'), fileName: 'cyberpunk.svg', tags: ['场景', '写实', '赛博朋克', '城市'], createdAt: now - day * 2 },
+    { id: 'demo-image-2', name: '国风山水', type: MaterialType.IMAGE, url: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8e4d8"/><stop offset="1" stop-color="#cfc8b4"/></linearGradient></defs><rect width="640" height="360" fill="url(#sky)"/><path d="M0 260 L120 160 L220 260 Z" fill="#5b6b5a" opacity="0.7"/><path d="M160 280 L320 120 L460 280 Z" fill="#3f5244" opacity="0.75"/><path d="M380 300 L520 170 L640 300 Z" fill="#2e3d33" opacity="0.8"/><text x="320" y="60" fill="#3a3a3a" font-size="30" text-anchor="middle" font-family="serif">国风山水</text></svg>'), fileName: 'guofeng.svg', tags: ['自然', '水墨'], createdAt: now - day * 7 },
   ];
 };
 
@@ -211,7 +297,7 @@ const App: React.FC = () => {
 
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [materials, setMaterials] = useState<Material[]>(createDemoMaterials()); // 素材库为全局资源，与项目解耦
+  const [materials, setMaterials] = useState<Material[]>(() => createDemoMaterials()); // 素材库为全局资源，与项目解耦
   const [worldview, setWorldview] = useState<WorldviewEntry[]>([]); 
   const [globalSettings, setGlobalSettings] = useState<Record<ConfigKeys, AgentSettings>>(createDefaultSettings()); 
   
