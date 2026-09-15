@@ -241,7 +241,7 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
       </div>
 
       <div className="absolute bottom-6 text-slate-600 text-xs font-mono">
-        v1.0.0 · Powered by Gemini
+        v1.2.0 · Powered by Gemini
       </div>
     </div>
   );
