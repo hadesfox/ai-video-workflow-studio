@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab, Material, PromptVersion, ShotGenConfig } from '../types';
-import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText, Upload, Trash2, Mic, Save, History, Cpu, Eraser, RefreshCw, PenTool, Layers, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab, Material, PromptVersion, ShotGenConfig, ShotReferenceMedia } from '../types';
+import { SHOT_PROMPT_CASE, createSampleShots, getPlaceholderSize } from '../demo/shotCase';
+import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText, Upload, Trash2, Mic, Save, History, Cpu, Eraser, RefreshCw, PenTool, Layers, ChevronDown, Copy, Music, FolderOpen, AtSign, LayoutGrid } from 'lucide-react';
 
 const InsertUpIcon = ({ size = 16, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -39,6 +40,11 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isPinned, setIsPinned] = useState(false); // Default to unpinned per request
   const [isScriptOpen, setIsScriptOpen] = useState(true); // 左侧剧本面板折叠
+
+  // 分镜布局：list = 列表布局（默认），focus = 单屏分镜布局
+  const [viewMode, setViewMode] = useState<'list' | 'focus'>('list');
+  const focusScrollRef = useRef<HTMLDivElement>(null);
+  const focusWheelLock = useRef(false);
   
   // Track active video index for each shot (for carousel)
   const [activeVideoIndices, setActiveVideoIndices] = useState<Record<string, number>>({});
@@ -84,6 +90,9 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
   // Prompt Version Popover State
   const [versionPopoverShotId, setVersionPopoverShotId] = useState<string | null>(null);
   const [savedFeedbackShotId, setSavedFeedbackShotId] = useState<string | null>(null);
+  // 参考素材：资产管理引用弹窗 & 操作反馈
+  const [assetPickerShotId, setAssetPickerShotId] = useState<string | null>(null);
+  const [refFeedback, setRefFeedback] = useState<{ shotId: string; message: string } | null>(null);
   // Top Action Buttons State
   const [batchMenuOpen, setBatchMenuOpen] = useState(false); // 批量操作下拉
   const [lineartGenerating, setLineartGenerating] = useState(false); // 线稿分镜生成中
@@ -107,13 +116,71 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
       }
   }, [hasVisitedVideo, setHasVisitedVideo]);
 
+  // 切换到已预置样例的分集时，自动启用案例的前后提示词展示
+  useEffect(() => {
+      const hasCaseShot = (activeEpisode?.shots || []).some(s => s.description.startsWith(SHOT_PROMPT_CASE.frontPrompt));
+      if (!hasCaseShot) return;
+      setAppliedFB(prev => (
+          prev.enabled && prev.front === SHOT_PROMPT_CASE.frontPrompt && prev.back === SHOT_PROMPT_CASE.backPrompt
+              ? prev
+              : { enabled: true, front: SHOT_PROMPT_CASE.frontPrompt, back: SHOT_PROMPT_CASE.backPrompt }
+      ));
+  }, [activeEpisodeId, episodes]);
+
+  // 布局二：滚轮/滑动切换整屏分镜（提示词框内部优先滚动）
+  useEffect(() => {
+      if (viewMode !== 'focus') return;
+      const el = focusScrollRef.current;
+      if (!el) return;
+      el.scrollTop = 0;
+
+      const handleWheel = (e: WheelEvent) => {
+          if (Math.abs(e.deltaY) < 8) return;
+          const target = e.target as HTMLElement;
+          const inner = target.closest('[data-focus-scroll="prompt"]') as HTMLElement | null;
+          if (inner && inner.scrollHeight > inner.clientHeight + 1) {
+              const atTop = inner.scrollTop <= 0;
+              const atBottom = inner.scrollTop + inner.clientHeight >= inner.scrollHeight - 1;
+              if (!((e.deltaY > 0 && atBottom) || (e.deltaY < 0 && atTop))) return;
+          }
+          e.preventDefault();
+          if (focusWheelLock.current) return;
+          const shots = activeEpisode?.shots || [];
+          const pageH = el.clientHeight;
+          if (!pageH || shots.length === 0) return;
+          const current = Math.round(el.scrollTop / pageH);
+          const next = Math.max(0, Math.min(shots.length - 1, current + (e.deltaY > 0 ? 1 : -1)));
+          if (next === current) return;
+          focusWheelLock.current = true;
+          el.scrollTo({ top: next * pageH, behavior: 'smooth' });
+          window.setTimeout(() => { focusWheelLock.current = false; }, 500);
+      };
+
+      el.addEventListener('wheel', handleWheel, { passive: false });
+      return () => el.removeEventListener('wheel', handleWheel);
+  }, [viewMode, activeEpisodeId, activeEpisode?.shots.length]);
+
   // --- Helpers ---
 
+  // 解析资产标签内容：优先「名称_状态」（正式版格式），兼容「名称-状态」
+  const parseAssetTag = (tagContent: string) => {
+    const underscoreIndex = tagContent.lastIndexOf('_');
+    if (underscoreIndex > 0 && underscoreIndex < tagContent.length - 1) {
+      return {
+        assetName: tagContent.slice(0, underscoreIndex),
+        stateName: tagContent.slice(underscoreIndex + 1),
+      };
+    }
+    const [assetName, stateName] = tagContent.split('-');
+    return { assetName, stateName };
+  };
+
   // Extract assets helper
-  const extractAssetsFromPrompt = (prompt: string) => {
+  const extractAssetsFromPrompt = (prompt: string, referenceMedia?: ShotReferenceMedia[]) => {
     const regex = /【@(.*?)】/g;
     const matches = [...prompt.matchAll(regex)];
     const linkedAssets: { name: string; url: string; type: string }[] = [];
+    const refs = referenceMedia || [];
 
     matches.forEach(match => {
       const tagContent = match[1]; 
@@ -128,7 +195,7 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
         return;
       }
 
-      const [assetName, stateName] = tagContent.split('-');
+      const { assetName, stateName } = parseAssetTag(tagContent);
       
       const asset = assets.find(a => a.name === assetName);
       if (asset) {
@@ -140,84 +207,50 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
             type: asset.type
           });
         }
+        return;
+      }
+
+      // 上传到分镜的同名素材也可被 @ 关联
+      const ref = refs.find(r => r.type !== 'AUDIO' && r.name === assetName);
+      if (ref) {
+        linkedAssets.push({ name: tagContent, url: ref.url, type: 'IMAGE' });
       }
     });
     return linkedAssets;
   };
 
-  const checkShotIssues = (prompt: string): boolean => {
+  const checkShotIssues = (prompt: string, referenceMedia?: ShotReferenceMedia[]): boolean => {
       if (!prompt.trim()) return true; 
+      // 上传到分镜的素材名（音频/图片/视频）不参与「缺失资产」校验
+      const refNames = new Set((referenceMedia || []).map(r => r.name));
       const regex = /【@(.*?)】/g;
       const matches = [...prompt.matchAll(regex)];
       for (const match of matches) {
           const tagContent = match[1];
           // 配音标签不参与「缺失资产」校验
           if (tagContent.startsWith('配音:')) continue;
-          const [assetName] = tagContent.split('-');
+          if (refNames.has(tagContent)) continue;
+          const { assetName } = parseAssetTag(tagContent);
+          if (refNames.has(assetName)) continue;
           const asset = assets.find(a => a.name === assetName);
           if (!asset) return true; 
       }
       return false;
   };
 
-  const checkAssetsExist = () => assets.length > 0;
   const checkAssetImagesExist = () => assets.some(a => a.imageUrl || a.states.some(s => !!s.mainImageUrl));
-
-  const generateShotPrompt = (index: number) => {
-    // ... (same as before)
-    const chars = assets.filter(a => a.type === 'CHARACTER');
-    const scenes = assets.filter(a => a.type === 'SCENE');
-    const props = assets.filter(a => a.type === 'PROP');
-
-    const char = chars.length > 0 ? chars[Math.floor(Math.random() * chars.length)] : null;
-    const scene = scenes.length > 0 ? scenes[Math.floor(Math.random() * scenes.length)] : null;
-    const prop = props.length > 0 ? props[Math.floor(Math.random() * props.length)] : null;
-
-    let prompt = `镜头 ${index + 1}: `;
-    const scenario = Math.random();
-    if (char && scene && scenario > 0.6) {
-      const charState = char.states[0]?.name || '默认';
-      const sceneState = scene.states[0]?.name || '默认';
-      prompt += `中景镜头，【@${char.name}-${charState}】站在【@${scene.name}-${sceneState}】中央，神情凝重。`;
-    } else if (char && prop && scenario > 0.3) {
-      const charState = char.states[0]?.name || '默认';
-      const propState = prop.states[0]?.name || '默认';
-      prompt += `特写镜头，【@${char.name}-${charState}】正在仔细检查手中的【@${prop.name}-${propState}】。`;
-    } else if (scene) {
-      const sceneState = scene.states[0]?.name || '默认';
-      prompt += `全景镜头，展示了【@${scene.name}-${sceneState}】的宏大景象，光影交错。`;
-    } else {
-      prompt += "神秘的黑影在迷雾中穿行。";
-    }
-    if (char?.boundVoiceName) prompt += `【@配音:${char.boundVoiceName}】`;
-    return prompt;
-  };
 
   // --- Actions ---
 
   const handleGenerateStoryboard = () => {
     if (!activeEpisode) return;
-    if (!checkAssetsExist()) {
-       setRedirectModal({
-          isOpen: true,
-          title: "资产库为空",
-          message: "您还没有提取任何资产。AI 需要基于资产来构建分镜画面，请先前往「资产管理」进行提取。",
-          actionLabel: "前往提取资产"
-       });
-       return;
-    }
-    
+    if (activeEpisode.shots.length > 0 && !window.confirm('将用样例分镜覆盖当前分镜，是否继续？')) return;
+
     setGenerating(true);
     setTimeout(() => {
-      // Increased length to 10 for better testing
-      const newShots: ExtendedShot[] = Array.from({ length: 10 }).map((_, idx) => ({
-        id: `shot-${activeEpisodeId}-${Date.now()}-${idx}`,
-        description: generateShotPrompt(idx),
-        duration: 3 + Math.floor(Math.random() * 5),
-        status: 'PENDING',
-        videoVersions: []
-      }));
-      setEpisodes(prev => prev.map(ep => 
+      const newShots = createSampleShots(activeEpisodeId, false);
+      setAppliedFB({ enabled: true, front: SHOT_PROMPT_CASE.frontPrompt, back: SHOT_PROMPT_CASE.backPrompt });
+      setEpisodes(prev => prev.map(ep =>
         ep.id === activeEpisodeId ? { ...ep, shots: newShots } : ep
       ));
       setGenerating(false);
@@ -266,7 +299,8 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
     // Generate in staggered manner
     idsToGen.forEach((id, idx) => {
       setTimeout(() => {
-        const newVideoUrl = `https://picsum.photos/seed/${id}-${type}/800/450`;
+        const shot = activeEpisode.shots.find(s => s.id === id);
+        const newVideoUrl = `https://picsum.photos/seed/${id}-${type}/${getPlaceholderSize(shot ? getGenConfig(shot).ratio : undefined)}`;
         setEpisodes(prev => prev.map(ep => {
            if (ep.id !== activeEpisodeId) return ep;
            return {
@@ -348,7 +382,8 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                 };
             }));
         } else {
-            const newVideoUrl = `https://picsum.photos/seed/${shotId}-${type}-${Date.now()}/800/450`;
+            const shot = activeEpisode?.shots.find(s => s.id === shotId);
+            const newVideoUrl = `https://picsum.photos/seed/${shotId}-${type}-${Date.now()}/${getPlaceholderSize(shot ? getGenConfig(shot).ratio : undefined)}`;
             setEpisodes(prev => prev.map(ep => {
                 if (ep.id !== activeEpisodeId) return ep;
                 return {
@@ -387,8 +422,8 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
   // --- Per-Shot Gen Config & Prompt Versions ---
   const MODEL_OPTIONS = ['2.5', 'fast', 'mini', '2.0'];
   const RATIO_OPTIONS = ['16:9', '9:16', '1:1', '21:9', '4:3', '3:4'];
-  const RESOLUTION_OPTIONS = ['720p', '1080p', '2K', '4K'];
-  const DURATION_OPTIONS = ['自动', ...Array.from({ length: 12 }, (_, i) => `${i + 4}s`)];
+  const RESOLUTION_OPTIONS = ['480p', '720p', '1080p', '2K', '4K'];
+  const DURATION_OPTIONS = ['自动', ...Array.from({ length: 12 }, (_, i) => `${i + 4}s`), '30s'];
   const DEFAULT_GEN_CONFIG: ShotGenConfig = { model: 'fast', ratio: '16:9', resolution: '720p', duration: '自动', fontSize: 'md' };
 
   const getGenConfig = (shot: ExtendedShot): ShotGenConfig => ({ ...DEFAULT_GEN_CONFIG, ...(shot.genConfig || {}) });
@@ -421,6 +456,154 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
   const handleRestorePromptVersion = (shotId: string, version: PromptVersion) => {
     handleShotPromptChange(shotId, version.text);
     setVersionPopoverShotId(null);
+  };
+
+  // --- 参考素材 / 绑定 ---
+  const flashRefFeedback = (shotId: string, message: string) => {
+    setRefFeedback({ shotId, message });
+    setTimeout(() => {
+      setRefFeedback(cur => (cur && cur.shotId === shotId && cur.message === message ? null : cur));
+    }, 2200);
+  };
+
+  const updateShotReferenceMedia = (shotId: string, updater: (list: ShotReferenceMedia[]) => ShotReferenceMedia[]) => {
+    setEpisodes(prev => prev.map(ep => {
+      if (ep.id !== activeEpisodeId) return ep;
+      return {
+        ...ep,
+        shots: ep.shots.map(s => s.id === shotId ? { ...s, referenceMedia: updater(s.referenceMedia || []) } : s)
+      };
+    }));
+  };
+
+  // 本地选择图片/音频/视频上传到当前分镜
+  const handlePickReferenceFiles = (shotId: string, type: 'IMAGE' | 'AUDIO' | 'VIDEO') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = type === 'IMAGE' ? 'image/*' : type === 'AUDIO' ? 'audio/*' : 'video/*';
+    input.onchange = () => {
+      const files = Array.from(input.files || []);
+      if (!files.length) return;
+      const now = Date.now();
+      const refs: ShotReferenceMedia[] = files.map((file, idx) => ({
+        id: `ref-${shotId}-${now}-${idx}`,
+        type,
+        name: file.name.replace(/\.[^.]+$/, ''),
+        url: URL.createObjectURL(file),
+      }));
+      updateShotReferenceMedia(shotId, list => [...list, ...refs]);
+      flashRefFeedback(shotId, `已上传 ${files.length} 个${type === 'IMAGE' ? '图片' : type === 'AUDIO' ? '音频' : '视频'}`);
+    };
+    input.click();
+  };
+
+  const handleRemoveReferenceMedia = (shotId: string, refId: string) => {
+    updateShotReferenceMedia(shotId, list => list.filter(r => r.id !== refId));
+  };
+
+  // 从资产管理引用资产：插入 【@资产名-状态】 标签
+  const handleInsertAssetTag = (shot: ExtendedShot, asset: Asset, stateName: string) => {
+    const tag = `【@${asset.name}${stateName ? `-${stateName}` : ''}】`;
+    setAssetPickerShotId(null);
+    if (shot.description.includes(tag)) {
+      flashRefFeedback(shot.id, '该资产已在提示词中');
+      return;
+    }
+    const parts = splitFrontBack(shot.description);
+    const sep = parts.body.trim() ? '\n' : '';
+    handleShotPromptChange(shot.id, parts.front + parts.body + sep + tag + parts.back);
+    flashRefFeedback(shot.id, `已引用「${asset.name}」`);
+  };
+
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // 绑定：把提示词中的角色名与同名资产（含上传到分镜的素材）自动加上 @ 关联
+  const handleBindCharacters = (shot: ExtendedShot) => {
+    const parts = splitFrontBack(shot.description);
+    let text = parts.body;
+    let bound = 0;
+
+    // 角色资产优先，其次使用上传到分镜的同名图片/视频
+    const candidates: { name: string; tag: string }[] = assets
+      .filter(a => a.type === 'CHARACTER' && !!a.name && a.states.length > 0)
+      .sort((a, b) => b.name.length - a.name.length)
+      .map(a => ({ name: a.name, tag: `【@${a.name}-${a.states[0].name}】` }));
+    (shot.referenceMedia || [])
+      .filter(r => r.type !== 'AUDIO')
+      .forEach(r => {
+        if (!candidates.some(c => c.name === r.name)) {
+          candidates.push({ name: r.name, tag: `【@${r.name}】` });
+        }
+      });
+
+    candidates.forEach(({ name, tag }) => {
+      if (!text.includes(name)) return;
+      const segments = text.split(/(【@[^】]+】)/g);
+      let changed = false;
+      for (let i = 0; i < segments.length; i += 2) {
+        if (!segments[i].includes(name)) continue;
+        const re = new RegExp(escapeRegExp(name), 'g');
+        const hits = segments[i].match(re);
+        if (!hits) continue;
+        bound += hits.length;
+        segments[i] = segments[i].replace(re, tag);
+        changed = true;
+      }
+      if (changed) text = segments.join('');
+    });
+
+    if (bound === 0) {
+      flashRefFeedback(shot.id, '提示词中未发现可绑定的角色名');
+      return;
+    }
+    handleShotPromptChange(shot.id, parts.front + text + parts.back);
+    flashRefFeedback(shot.id, `已自动绑定 ${bound} 处角色`);
+  };
+
+  // 绑定配音：在提示词最前方增加一行 【@角色名】使用【@音频】
+  const handleBindVoice = (shot: ExtendedShot) => {
+    const parts = splitFrontBack(shot.description);
+    const tags = [...parts.body.matchAll(/【@([^】]+)】/g)];
+    let charName = '';
+    let charAsset: Asset | undefined;
+    for (const tag of tags) {
+      const content = tag[1];
+      if (content.startsWith('配音:')) continue;
+      const { assetName: name } = parseAssetTag(content);
+      const asset = assets.find(a => a.name === name);
+      if (asset?.type === 'CHARACTER') {
+        charName = name;
+        charAsset = asset;
+        break;
+      }
+    }
+    if (!charName) {
+      flashRefFeedback(shot.id, '未找到角色，请先在提示词中引用角色');
+      return;
+    }
+    const audioRef = (shot.referenceMedia || []).find(r => r.type === 'AUDIO');
+    const audioName = audioRef?.name || charAsset?.boundVoiceName;
+    if (!audioName) {
+      flashRefFeedback(shot.id, '请先上传音频，或为角色绑定配音');
+      return;
+    }
+    const line = `【@${charName}】使用【@${audioName}】`;
+    if (parts.body.startsWith(line)) {
+      flashRefFeedback(shot.id, '提示词已包含配音绑定');
+      return;
+    }
+    handleShotPromptChange(shot.id, parts.front + line + '\n' + parts.body + parts.back);
+    flashRefFeedback(shot.id, '已绑定配音');
+  };
+
+  const handleCopyPrompt = async (shot: ExtendedShot) => {
+    try {
+      await navigator.clipboard.writeText(shot.description);
+      flashRefFeedback(shot.id, '提示词已复制');
+    } catch {
+      flashRefFeedback(shot.id, '复制失败');
+    }
   };
 
   const fontSizeClass = (size: 'sm' | 'md' | 'lg') =>
@@ -626,6 +809,14 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
   };
 
   const scrollToShot = (shotId: string) => {
+    if (viewMode === 'focus' && focusScrollRef.current && activeEpisode) {
+      const idx = activeEpisode.shots.findIndex(s => s.id === shotId);
+      const container = focusScrollRef.current;
+      if (idx >= 0) {
+        container.scrollTo({ top: idx * container.clientHeight, behavior: 'smooth' });
+        return;
+      }
+    }
     const el = document.getElementById(`shot-card-${shotId}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
@@ -688,6 +879,18 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
         label: downloadModal.type === 'EPISODE' ? (activeEpisode?.name || '当前分集') : '整部视频项目' 
      };
   }, [downloadModal.type, downloadModal.includeHistory, activeEpisode, episodes]);
+
+  // 拆分分镜提示词：固定前置/后置提示词（只读）与可编辑正文
+  const splitFrontBack = (text: string) => {
+      const front = appliedFB.enabled && appliedFB.front ? appliedFB.front + '\n' : '';
+      const back = appliedFB.enabled && appliedFB.back ? '\n' + appliedFB.back : '';
+      const hasFront = !!front && text.startsWith(front);
+      const hasBack = !!back && text.endsWith(back);
+      let body = text;
+      if (hasFront) body = body.slice(front.length);
+      if (hasBack) body = body.slice(0, body.length - back.length);
+      return { front: hasFront ? front : '', body, back: hasBack ? back : '' };
+  };
 
   // Helper to render highlighted prompt text
   const renderHighlightedPrompt = (text: string) => {
@@ -782,26 +985,19 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                <h2 className="text-lg font-bold text-white">{activeEpisode?.name}</h2>
             </div>
             
-            {/* Center Tabs (PiP Toggle) */}
-            <div 
-               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-36 h-10 rounded-xl cursor-pointer group"
-               onClick={() => setSubTab && setSubTab(subTab === VideoSubTab.VIDU ? VideoSubTab.SEEDANCE : VideoSubTab.VIDU)}
+            {/* Center: Layout Toggle */}
+            <button
+               onClick={() => setViewMode(prev => prev === 'list' ? 'focus' : 'list')}
+               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 h-10 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-medium shadow-lg transition-all active:scale-95"
+               title={viewMode === 'list' ? '切换为单屏分镜布局' : '切换为列表布局'}
             >
-               <div className={`absolute transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                  subTab === VideoSubTab.VIDU 
-                     ? 'inset-0 bg-transparent border-[1.5px] border-[#38BDF8] text-[#38BDF8] tracking-[1px] group-hover:bg-[#38BDF8] group-hover:text-[#111827] font-bold text-sm z-0 rounded-xl flex items-center pl-4' 
-                     : 'bottom-1 right-1 px-2 py-0.5 bg-slate-900/90 text-slate-300 text-[10px] z-10 rounded shadow-lg backdrop-blur-md group-hover:bg-slate-700 group-hover:text-white flex items-center justify-center'
-               }`}>
-                  Vidu
-               </div>
-               <div className={`absolute transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                  subTab === VideoSubTab.SEEDANCE 
-                     ? 'inset-0 bg-gradient-to-br from-[#0e7490] via-[#1e3a8a] via-80% to-[#FFD700]/30 border border-[#33DEFF]/40 text-white font-bold text-sm z-0 rounded-xl shadow-[0_4px_15px_rgba(51,222,255,0.2)] group-hover:shadow-[0_6px_20px_rgba(51,222,255,0.3)] group-hover:-translate-y-[2px] flex items-center pl-4' 
-                     : 'bottom-1 right-1 px-2 py-0.5 bg-slate-900/90 text-slate-300 text-[10px] z-10 rounded shadow-lg backdrop-blur-md group-hover:bg-slate-700 group-hover:text-white flex items-center justify-center'
-               }`}>
-                  Seedance
-               </div>
-            </div>
+               {viewMode === 'list' ? (
+                  <LayoutGrid size={16} className="text-cyan-400" />
+               ) : (
+                  <Maximize2 size={16} className="text-purple-400" />
+               )}
+               <span>{viewMode === 'list' ? '布局一' : '布局二'}</span>
+            </button>
 
             <div className="flex items-center gap-3">
                <button 
@@ -873,9 +1069,9 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                {/* 生成分镜 */}
                <button 
                   onClick={(e) => { e.stopPropagation(); handleGenerateStoryboard(); }}
-                  disabled={generating || (activeEpisode?.shots.length || 0) > 0} 
+                  disabled={generating} 
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
-                  title={(activeEpisode?.shots.length || 0) > 0 ? "分镜已生成" : "生成分镜"}
+                  title="生成样例分镜（覆盖当前分镜）"
                >
                   {generating ? <Loader2 className="animate-spin" size={16} /> : <Clapperboard size={16} />}
                   <span>生成分镜</span>
@@ -979,7 +1175,10 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
             ))}
 
             {/* Right: Storyboard Grid */}
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-900/50 relative scroll-smooth pr-16 custom-scrollbar"> 
+            <div
+                ref={focusScrollRef}
+                className={`flex-1 bg-slate-900/50 relative custom-scrollbar pr-16 ${viewMode === 'focus' ? 'overflow-y-auto snap-y snap-mandatory overscroll-contain' : 'overflow-y-auto p-6 scroll-smooth'}`}
+            >
                 {!activeEpisode?.shots.length ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
                     <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mb-6 border border-slate-800">
@@ -997,9 +1196,9 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                     </button>
                 </div>
                 ) : (
-                <div className="grid grid-cols-1 gap-6 pb-20 pt-6">
+                <div className={viewMode === 'focus' ? 'contents' : 'grid grid-cols-1 gap-6 pb-20 pt-6'}>
                     {activeEpisode.shots.map((shot, index) => {
-                        const linkedAssets = extractAssetsFromPrompt(shot.description);
+                        const linkedAssets = extractAssetsFromPrompt(shot.description, shot.referenceMedia);
                         const isVideoGenerating = videoGeneratingMap[shot.id];
                         
                         // Handle Multi-Version Logic
@@ -1016,23 +1215,28 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                         
                         const isEditing = editingShotId === shot.id;
                         const cfg = getGenConfig(shot);
+                        const promptParts = splitFrontBack(shot.description);
 
                         return (
-                            <div key={shot.id} className="relative flex flex-col">
+                            <div key={shot.id} className={viewMode === 'focus' ? 'relative flex flex-col h-full snap-start' : 'relative flex flex-col'}>
                             <div 
                             id={`shot-card-${shot.id}`}
-                            className={`bg-slate-900 border rounded-xl overflow-hidden flex flex-col md:flex-row group transition-colors shadow-sm ${isErrorState ? 'border-red-500/50' : 'border-slate-800 hover:border-slate-600'}`}
+                            className={`bg-slate-900 overflow-hidden flex flex-col md:flex-row group transition-colors ${
+                                viewMode === 'focus'
+                                    ? 'h-full min-h-0 rounded-none border-y border-slate-800'
+                                    : `border rounded-xl shadow-sm md:min-h-[calc(100vh-170px)] ${isErrorState ? 'border-red-500/50' : 'border-slate-800 hover:border-slate-600'}`
+                            }`}
                             >
                             
                             {/* Left: Video Preview (Larger Size) */}
-                            <div className="w-full md:w-[420px] aspect-video bg-black relative shrink-0 border-r border-slate-800 group/media">
+                            <div className="w-full md:w-[46%] md:max-w-[760px] h-[300px] md:h-auto md:self-stretch bg-black relative shrink-0 border-r border-slate-800 group/media">
                                 {hasVideo && !isErrorState ? (
                                     <div className="relative w-full h-full flex items-center justify-center bg-black">
                                         {/* Use img to display preview since these are dummy URLs */}
                                         <img 
                                             id={`video-${shot.id}`} 
                                             src={activeVideoUrl} 
-                                            className="w-full h-full object-cover opacity-90" 
+                                            className="w-full h-full object-contain bg-black" 
                                             alt={`Shot ${index + 1}`}
                                         />
                                         
@@ -1162,9 +1366,9 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                             </div>
 
                             {/* Right: Controls & Prompt */}
-                            <div className="flex-1 p-5 flex flex-col min-w-0">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
+                            <div className={`flex-1 p-5 flex flex-col min-w-0 ${viewMode === 'focus' ? 'h-full min-h-0 overflow-hidden' : ''}`}>
+                                <div className="flex justify-between items-start mb-2 shrink-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <Wand2 size={14} className="text-indigo-400" />
                                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">分镜提示词 (Prompt)</label>
                                         <button 
@@ -1221,61 +1425,91 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                                                 </div>
                                             )}
                                         </div>
+                                        <button
+                                            onClick={() => handleBindCharacters(shot)}
+                                            className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-xs transition-colors"
+                                            title="将提示词中的角色名与同名资产自动加上 @ 关联"
+                                        >
+                                            <AtSign size={12} />
+                                            <span>绑定</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleBindVoice(shot)}
+                                            className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-xs transition-colors"
+                                            title="在提示词最前方插入配音绑定行"
+                                        >
+                                            <Mic size={12} />
+                                            <span>绑定配音</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleCopyPrompt(shot)}
+                                            className="text-slate-500 hover:text-white p-1.5 rounded hover:bg-slate-800 transition-colors"
+                                            title="复制提示词"
+                                        >
+                                            <Copy size={13} />
+                                        </button>
+                                        {refFeedback?.shotId === shot.id && (
+                                            <span className="text-[11px] text-emerald-400 whitespace-nowrap animate-fade-in">{refFeedback.message}</span>
+                                        )}
                                     </div>
                                     
-                                    {/* 3 Separate Generate Buttons */}
-                                    <div className="flex items-center gap-1.5">
-                                        <button 
-                                            onClick={() => handleSingleShotGenerate(shot.id, 'IMAGE')}
-                                            disabled={isVideoGenerating || shot.status === 'GENERATING'}
-                                            className="flex items-center gap-1 px-2 py-1.5 bg-slate-800 hover:bg-blue-600 hover:text-white border border-slate-700 text-slate-300 rounded text-xs transition-all disabled:opacity-50"
-                                            title="图生视频"
-                                        >
-                                            <ImageIcon size={12} />
-                                            <span>图生视频</span>
-                                        </button>
-                                        <button 
-                                            onClick={() => handleSingleShotGenerate(shot.id, 'SUBJECT')}
-                                            disabled={isVideoGenerating || shot.status === 'GENERATING'}
-                                            className="flex items-center gap-1 px-2 py-1.5 bg-slate-800 hover:bg-purple-600 hover:text-white border border-slate-700 text-slate-300 rounded text-xs transition-all disabled:opacity-50"
-                                            title="主体生视频"
-                                        >
-                                            <User size={12} />
-                                            <span>主体生视频</span>
-                                        </button>
-                                        <button 
-                                            onClick={() => handleSingleShotGenerate(shot.id, 'SCENE')}
-                                            disabled={isVideoGenerating || shot.status === 'GENERATING'}
-                                            className="flex items-center gap-1 px-2 py-1.5 bg-slate-800 hover:bg-emerald-600 hover:text-white border border-slate-700 text-slate-300 rounded text-xs transition-all disabled:opacity-50"
-                                            title="场景图生视频"
-                                        >
-                                            <Map size={12} />
-                                            <span>场景图生视频</span>
-                                        </button>
-                                    </div>
+                                    <button
+                                        onClick={() => handleSingleShotGenerate(shot.id, 'SUBJECT')}
+                                        disabled={isVideoGenerating || shot.status === 'GENERATING'}
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-xs font-medium shadow-lg shadow-purple-900/20 transition-all disabled:opacity-50 active:scale-95"
+                                        title="主体生视频"
+                                    >
+                                        <User size={12} />
+                                        <span>主体生视频</span>
+                                    </button>
                                 </div>
 
                                 {/* Auto-growing Prompt Editor (Grid Method) */}
-                                <div className="relative w-full min-h-[7rem] border border-slate-800 rounded-lg bg-slate-950 grid grid-cols-1 overflow-hidden transition-all focus-within:ring-1 focus-within:ring-blue-500/50">
-                                    {/* Replicator / Display */}
-                                    <div className={`p-3 ${fontSizeClass(cfg.fontSize)} font-mono leading-relaxed whitespace-pre-wrap break-words col-start-1 row-start-1 ${isEditing ? 'invisible' : 'text-slate-200'} custom-scrollbar`}>
-                                        {isEditing ? shot.description + ' ' : renderHighlightedPrompt(shot.description)}
+                                <div
+                                    data-focus-scroll={viewMode === 'focus' ? 'prompt' : undefined}
+                                    className={`relative w-full border border-slate-800 rounded-lg bg-slate-950 transition-all focus-within:ring-1 focus-within:ring-blue-500/50 ${viewMode === 'focus' ? 'flex-1 min-h-0 overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}
+                                >
+                                    {/* 固定前置提示词（不可编辑） */}
+                                    {promptParts.front && (
+                                        <div
+                                            className={`px-3 pt-3 pb-1 text-slate-500 font-mono leading-relaxed whitespace-pre-wrap break-words select-none cursor-default ${fontSizeClass(cfg.fontSize)}`}
+                                            title="固定前缀提示词（不可编辑）"
+                                        >
+                                            {promptParts.front.trimEnd()}
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-1 min-h-[7rem]">
+                                        {/* Replicator / Display */}
+                                        <div className={`p-3 ${fontSizeClass(cfg.fontSize)} font-mono leading-relaxed whitespace-pre-wrap break-words col-start-1 row-start-1 ${isEditing ? 'invisible' : 'text-slate-200'} custom-scrollbar`}>
+                                            {isEditing ? promptParts.body + ' ' : renderHighlightedPrompt(promptParts.body)}
+                                        </div>
+
+                                        {/* Textarea */}
+                                        {isEditing && (
+                                            <textarea
+                                                value={promptParts.body}
+                                                onChange={(e) => handleShotPromptChange(shot.id, promptParts.front + e.target.value + promptParts.back)}
+                                                className={`w-full h-full p-3 bg-transparent ${fontSizeClass(cfg.fontSize)} font-mono leading-relaxed text-slate-200 caret-blue-500 focus:outline-none resize-none overflow-hidden col-start-1 row-start-1`}
+                                                autoFocus
+                                                spellCheck={false}
+                                            />
+                                        )}
                                     </div>
-                                    
-                                    {/* Textarea */}
-                                    {isEditing && (
-                                        <textarea 
-                                            value={shot.description}
-                                            onChange={(e) => handleShotPromptChange(shot.id, e.target.value)}
-                                            className={`w-full h-full p-3 bg-transparent ${fontSizeClass(cfg.fontSize)} font-mono leading-relaxed text-slate-200 caret-blue-500 focus:outline-none resize-none overflow-hidden col-start-1 row-start-1`}
-                                            autoFocus
-                                            spellCheck={false}
-                                        />
+
+                                    {/* 固定后置提示词（不可编辑） */}
+                                    {promptParts.back && (
+                                        <div
+                                            className={`px-3 pb-3 pt-1 text-slate-500 font-mono leading-relaxed whitespace-pre-wrap break-words select-none cursor-default ${fontSizeClass(cfg.fontSize)}`}
+                                            title="固定后缀提示词（不可编辑）"
+                                        >
+                                            {promptParts.back.trimStart()}
+                                        </div>
                                     )}
                                 </div>
 
                                 {/* Gen Params Row: model / ratio / resolution / duration + font size */}
-                                <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+                                <div className="mt-2 flex items-center justify-between gap-2 flex-wrap shrink-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         {renderParamSelect(<Cpu size={12} className="text-slate-500" />, cfg.model, MODEL_OPTIONS, v => updateGenConfig(shot.id, { model: v }), '模型')}
                                         {renderParamSelect(<Ratio size={12} className="text-slate-500" />, cfg.ratio, RATIO_OPTIONS, v => updateGenConfig(shot.id, { ratio: v }), '画面比例')}
@@ -1297,45 +1531,120 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
 
                                 {/* Front / Back Prompts applied globally via 前后提示词 modal */}
 
-                                <div className="mt-auto pt-4 border-t border-slate-800/50">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <ImageIcon size={14} className="text-emerald-400" />
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">关联资产</label>
+                                <div className="mt-auto pt-4 border-t border-slate-800/50 shrink-0">
+                                    <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                                        <div className="flex items-center gap-2">
+                                            <ImageIcon size={14} className="text-emerald-400" />
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">参考素材</label>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <button
+                                                onClick={() => setAssetPickerShotId(shot.id)}
+                                                className="flex items-center gap-1 px-2.5 py-1 rounded border border-purple-500/60 text-purple-300 hover:bg-purple-500/10 text-xs transition-colors"
+                                                title="从资产管理引用资产"
+                                            >
+                                                <FolderOpen size={12} />
+                                                <span>资产管理</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handlePickReferenceFiles(shot.id, 'IMAGE')}
+                                                className="flex items-center gap-1 px-2.5 py-1 rounded border border-blue-500/60 text-blue-300 hover:bg-blue-500/10 text-xs transition-colors"
+                                                title="上传本地图片"
+                                            >
+                                                <ImageIcon size={12} />
+                                                <span>上传图片</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handlePickReferenceFiles(shot.id, 'AUDIO')}
+                                                className="flex items-center gap-1 px-2.5 py-1 rounded border border-emerald-500/60 text-emerald-300 hover:bg-emerald-500/10 text-xs transition-colors"
+                                                title="上传本地音频"
+                                            >
+                                                <Music size={12} />
+                                                <span>上传音频</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handlePickReferenceFiles(shot.id, 'VIDEO')}
+                                                className="flex items-center gap-1 px-2.5 py-1 rounded border border-purple-500/60 text-purple-300 hover:bg-purple-500/10 text-xs transition-colors"
+                                                title="上传本地视频"
+                                            >
+                                                <Video size={12} />
+                                                <span>上传视频</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                    {linkedAssets.length > 0 ? (
-                                        <div className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar">
-                                        {linkedAssets.map((asset, i) => (
-                                            <div key={i} className="flex items-center gap-2 bg-slate-800 rounded-lg pr-3 pl-1 py-1 border border-slate-700 shrink-0">
-                                                {asset.type === 'VOICE' ? (
-                                                    <div className="w-8 h-8 rounded bg-purple-600/20 flex items-center justify-center shrink-0">
-                                                        <Mic size={14} className="text-purple-400" />
+
+                                    {(() => {
+                                        const refMedia = shot.referenceMedia || [];
+                                        const boundNames = new Set([...shot.description.matchAll(/【@([^】]+)】/g)].map(m => parseAssetTag(m[1]).assetName));
+                                        const seenVisuals = new Set<string>();
+                                        const linkedVisuals = linkedAssets.filter(a => {
+                                            if (a.type === 'VOICE') return false;
+                                            const name = parseAssetTag(a.name).assetName;
+                                            if (seenVisuals.has(name)) return false;
+                                            seenVisuals.add(name);
+                                            return true;
+                                        });
+                                        const linkedVoices = linkedAssets.filter(a => a.type === 'VOICE');
+                                        const uploadedVisuals = refMedia.filter(r => r.type !== 'AUDIO' && !boundNames.has(r.name));
+                                        const uploadedAudios = refMedia.filter(r => r.type === 'AUDIO');
+                                        const isEmpty = linkedVisuals.length === 0 && uploadedVisuals.length === 0 && linkedVoices.length === 0 && uploadedAudios.length === 0;
+                                        if (isEmpty) {
+                                            return <div className="text-xs text-slate-600 italic pl-1">暂无参考素材，可从资产管理引用或上传本地文件。</div>;
+                                        }
+                                        return (
+                                            <div className="flex flex-wrap gap-2">
+                                                {linkedVisuals.map((asset, i) => (
+                                                    <div key={`linked-${i}`} className="relative w-20 rounded-lg overflow-hidden border border-slate-700 bg-black shrink-0 group/ref">
+                                                        <img src={asset.url} alt="" className="w-full h-14 object-cover" />
+                                                        <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-emerald-500/90 text-[9px] text-white">关联</span>
+                                                        <div className="px-1 py-0.5 bg-slate-800 text-[10px] text-slate-300 truncate">{parseAssetTag(asset.name).assetName}</div>
                                                     </div>
-                                                ) : (
-                                                    <div className="w-8 h-8 rounded bg-black overflow-hidden shrink-0">
-                                                        <img src={asset.url} alt="" className="w-full h-full object-cover" />
+                                                ))}
+                                                {uploadedVisuals.map(ref => (
+                                                    <div key={ref.id} className="relative w-20 rounded-lg overflow-hidden border border-slate-700 bg-black shrink-0 group/ref">
+                                                        {ref.type === 'IMAGE' ? (
+                                                            <img src={ref.url} alt="" className="w-full h-14 object-cover" />
+                                                        ) : (
+                                                            <video src={ref.url} className="w-full h-14 object-cover" muted />
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleRemoveReferenceMedia(shot.id, ref.id)}
+                                                            className="absolute top-1 right-1 p-0.5 rounded bg-black/70 text-slate-300 hover:text-red-400 opacity-0 group-hover/ref:opacity-100 transition-opacity"
+                                                            title="移除"
+                                                        >
+                                                            <X size={10} />
+                                                        </button>
+                                                        <div className="px-1 py-0.5 bg-slate-800 text-[10px] text-slate-300 truncate">{ref.name}</div>
                                                     </div>
-                                                )}
-                                                <div className="flex flex-col min-w-0">
-                                                    {asset.type === 'VOICE' ? (
-                                                        <>
-                                                            <span className="text-xs font-medium text-slate-200 truncate max-w-[100px]">{asset.name.replace('配音:', '')}</span>
-                                                            <span className="text-[10px] text-purple-400/80 truncate max-w-[100px]">配音</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <span className="text-xs font-medium text-slate-200 truncate max-w-[100px]">{asset.name.replace('【@', '').replace('】', '').split('-')[0]}</span>
-                                                            <span className="text-[10px] text-slate-500 truncate max-w-[100px]">{asset.name.replace('【@', '').replace('】', '').split('-')[1]}</span>
-                                                        </>
-                                                    )}
-                                                </div>
+                                                ))}
+                                                {uploadedAudios.map((ref, i) => (
+                                                    <div key={ref.id} className="flex items-center gap-1.5 bg-slate-800 rounded-lg pl-2 pr-1 py-1 border border-slate-700 shrink-0 group/ref">
+                                                        <Music size={12} className="text-emerald-400 shrink-0" />
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-[10px] text-emerald-400/80">音频{uploadedAudios.length > 1 ? i + 1 : ''}</span>
+                                                            <span className="text-xs text-slate-200 truncate max-w-[100px]">{ref.name}</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleRemoveReferenceMedia(shot.id, ref.id)}
+                                                            className="p-0.5 text-slate-500 hover:text-red-400 opacity-0 group-hover/ref:opacity-100 transition-opacity"
+                                                            title="移除"
+                                                        >
+                                                            <X size={10} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {linkedVoices.map((asset, i) => (
+                                                    <div key={`voice-${i}`} className="flex items-center gap-1.5 bg-slate-800 rounded-lg pl-2 pr-3 py-1 border border-slate-700 shrink-0">
+                                                        <Mic size={12} className="text-purple-400 shrink-0" />
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-[10px] text-purple-400/80">配音</span>
+                                                            <span className="text-xs text-slate-200 truncate max-w-[100px]">{asset.name.replace('配音:', '')}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-xs text-slate-600 italic pl-1">
-                                        未检测到关联资产。
-                                        </div>
-                                    )}
+                                        );
+                                    })()}
                                 </div>
 
                             </div>
@@ -1401,7 +1710,7 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                 <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/50 p-2 rounded-2xl flex flex-col gap-2 shadow-xl pointer-events-auto max-h-[80vh] overflow-y-auto custom-scrollbar">
                     {activeEpisode.shots.map((shot, idx) => {
                         const isGenerating = videoGeneratingMap[shot.id] || shot.status === 'GENERATING';
-                        const hasIssue = checkShotIssues(shot.description);
+                        const hasIssue = checkShotIssues(shot.description, shot.referenceMedia);
                         const isCompleted = shot.status === 'COMPLETED';
                         const isError = shot.status === 'ERROR';
                         
@@ -1796,6 +2105,72 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
             </div>
          </div>
       )}
+
+      {/* Asset Picker Modal：从资产管理引用资产 */}
+      {assetPickerShotId && (() => {
+         const targetShot = activeEpisode?.shots.find(s => s.id === assetPickerShotId);
+         if (!targetShot) return null;
+         const typeLabel = (t: Asset['type']) => t === 'CHARACTER' ? '角色' : t === 'SCENE' ? '场景' : t === 'PROP' ? '道具' : '世界观';
+         return (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-6" onClick={() => setAssetPickerShotId(null)}>
+               <div className="bg-slate-900 w-full max-w-2xl rounded-xl border border-slate-700 shadow-2xl overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800">
+                     <div className="flex items-center gap-2 text-white font-bold">
+                        <FolderOpen size={16} className="text-purple-400" />
+                        <span>从资产管理引用</span>
+                     </div>
+                     <button onClick={() => setAssetPickerShotId(null)} className="text-slate-500 hover:text-white transition-colors">
+                        <X size={18} />
+                     </button>
+                  </div>
+                  <div className="p-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                     {assets.length === 0 ? (
+                        <div className="flex flex-col items-center gap-3 py-10 text-sm text-slate-500">
+                           <span>资产管理中暂无资产。</span>
+                           <button
+                              onClick={() => { setAssetPickerShotId(null); goToAssets(); }}
+                              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-medium transition-colors"
+                           >
+                              前往资产管理
+                           </button>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                           {assets.map(asset => {
+                              const cover = asset.imageUrl || asset.states.find(s => s.mainImageUrl)?.mainImageUrl;
+                              return (
+                                 <div key={asset.id} className="flex gap-2 p-2 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                    <div className="w-14 h-14 rounded bg-black overflow-hidden shrink-0 flex items-center justify-center">
+                                       {cover ? <img src={cover} alt="" className="w-full h-full object-cover" /> : <ImageIcon size={18} className="text-slate-600" />}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                       <div className="flex items-center gap-1.5 mb-1">
+                                          <span className="text-xs font-medium text-slate-200 truncate">{asset.name}</span>
+                                          <span className="text-[9px] px-1 py-0.5 rounded bg-slate-700 text-slate-400 shrink-0">{typeLabel(asset.type)}</span>
+                                       </div>
+                                       <div className="flex flex-wrap gap-1">
+                                          {(asset.states.length > 0 ? asset.states : [{ id: `${asset.id}-default`, name: '' }]).map(state => (
+                                             <button
+                                                key={state.id}
+                                                onClick={() => handleInsertAssetTag(targetShot, asset, state.name)}
+                                                className="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-purple-600 text-[10px] text-slate-300 hover:text-white transition-colors"
+                                                title={`插入 【@${asset.name}${state.name ? `-${state.name}` : ''}】`}
+                                             >
+                                                {state.name || '引用'}
+                                             </button>
+                                          ))}
+                                       </div>
+                                    </div>
+                                 </div>
+                              );
+                           })}
+                        </div>
+                     )}
+                  </div>
+               </div>
+            </div>
+         );
+      })()}
 
       {/* Preview All Episodes Modal */}
       {previewAllOpen && (() => {

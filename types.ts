@@ -126,6 +126,15 @@ export interface ExtendedShot extends Shot {
   videoVersions?: string[]; // 存储历史版本
   promptVersions?: PromptVersion[]; // 提示词保存版本
   genConfig?: ShotGenConfig; // 单镜头生成参数与显示设置
+  referenceMedia?: ShotReferenceMedia[]; // 分镜参考素材（本地上传的图片/音频/视频）
+}
+
+// 分镜参考素材
+export interface ShotReferenceMedia {
+  id: string;
+  type: 'IMAGE' | 'AUDIO' | 'VIDEO';
+  name: string;
+  url: string;
 }
 
 // 提示词保存版本

@@ -13,6 +13,7 @@ import PersonalCenter from './components/PersonalCenter';
 import PartnerCollaboration from './components/PartnerCollaboration';
 import MaterialLibrary from './components/MaterialLibrary';
 import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap, LayoutDashboard, UserCircle, ChevronLeft, RefreshCw, Cloud, LayoutGrid, Disc, Users2, Library } from 'lucide-react';
+import { createSampleShots } from './demo/shotCase';
 
 // Default Settings Helper
 const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
@@ -301,8 +302,9 @@ const App: React.FC = () => {
   const [worldview, setWorldview] = useState<WorldviewEntry[]>([]); 
   const [globalSettings, setGlobalSettings] = useState<Record<ConfigKeys, AgentSettings>>(createDefaultSettings()); 
   
-  const [episodes, setEpisodes] = useState<Episode[]>([
+  const [episodes, setEpisodes] = useState<Episode[]>(() => [
     { id: 'ep1', name: '第一集：觉醒', scriptContent: `[场景：雨夜街道]...`, shots: [] },
+    { id: 'ep2', name: '第二集：生日惊喜（已生成样例）', scriptContent: `[场景：别墅后花园喷泉池旁，夜晚] 贾斯珀与塞蕾娜的生日惊喜。`, shots: createSampleShots('ep2') },
   ]);
 
   const [videoSettings, setVideoSettings] = useState<VideoSettings>({
