@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Asset, Episode, ExtendedShot, VideoSettings, TimelineClip, GenerationError, VideoSubTab, Material, PromptVersion, ShotGenConfig, ShotReferenceMedia } from '../types';
 import { SHOT_PROMPT_CASE, createSampleShots, getPlaceholderSize } from '../demo/shotCase';
-import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText, Upload, Trash2, Mic, Save, History, Cpu, Eraser, RefreshCw, PenTool, Layers, ChevronDown, Copy, Music, FolderOpen, AtSign, LayoutGrid } from 'lucide-react';
+import { Play, Clapperboard, Download, Loader2, Maximize2, Settings2, Folder, Film, ChevronLeft, ChevronRight, Wand2, Image as ImageIcon, Video, PanelLeftClose, PanelLeftOpen, FileVideo, Pin, PinOff, AlertCircle, X, CheckCircle2, Monitor, Clock, Ratio, AlertTriangle, ArrowRight, Scissors, Share, Map, User, Edit3, FileText, Upload, Trash2, Mic, Save, History, Cpu, Eraser, RefreshCw, PenTool, Layers, ChevronDown, Copy, Music, FolderOpen, AtSign } from 'lucide-react';
 
 const InsertUpIcon = ({ size = 16, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -41,8 +41,8 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
   const [isPinned, setIsPinned] = useState(false); // Default to unpinned per request
   const [isScriptOpen, setIsScriptOpen] = useState(true); // 左侧剧本面板折叠
 
-  // 分镜布局：list = 列表布局（默认），focus = 单屏分镜布局
-  const [viewMode, setViewMode] = useState<'list' | 'focus'>('list');
+  // 分镜布局：sticky = 列表 + 视频跟随（默认），focus = 单屏分镜布局
+  const [viewMode, setViewMode] = useState<'sticky' | 'focus'>('sticky');
   const focusScrollRef = useRef<HTMLDivElement>(null);
   const focusWheelLock = useRef(false);
   
@@ -987,16 +987,16 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
             
             {/* Center: Layout Toggle */}
             <button
-               onClick={() => setViewMode(prev => prev === 'list' ? 'focus' : 'list')}
+               onClick={() => setViewMode(prev => prev === 'sticky' ? 'focus' : 'sticky')}
                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 h-10 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-medium shadow-lg transition-all active:scale-95"
-               title={viewMode === 'list' ? '切换为单屏分镜布局' : '切换为列表布局'}
+               title={viewMode === 'sticky' ? '切换为布局二（单屏分镜）' : '切换为布局一（视频跟随滚动）'}
             >
-               {viewMode === 'list' ? (
-                  <LayoutGrid size={16} className="text-cyan-400" />
+               {viewMode === 'sticky' ? (
+                  <Pin size={16} className="text-emerald-400" />
                ) : (
                   <Maximize2 size={16} className="text-purple-400" />
                )}
-               <span>{viewMode === 'list' ? '布局一' : '布局二'}</span>
+               <span>{viewMode === 'sticky' ? '布局一' : '布局二'}</span>
             </button>
 
             <div className="flex items-center gap-3">
@@ -1221,15 +1221,19 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                             <div key={shot.id} className={viewMode === 'focus' ? 'relative flex flex-col h-full snap-start' : 'relative flex flex-col'}>
                             <div 
                             id={`shot-card-${shot.id}`}
-                            className={`bg-slate-900 overflow-hidden flex flex-col md:flex-row group transition-colors ${
+                            className={`bg-slate-900 flex flex-col md:flex-row group transition-colors ${
                                 viewMode === 'focus'
-                                    ? 'h-full min-h-0 rounded-none border-y border-slate-800'
-                                    : `border rounded-xl shadow-sm md:min-h-[calc(100vh-170px)] ${isErrorState ? 'border-red-500/50' : 'border-slate-800 hover:border-slate-600'}`
+                                    ? 'overflow-hidden h-full min-h-0 rounded-none border-y border-slate-800'
+                                    : `overflow-visible border rounded-xl shadow-sm md:min-h-[calc(100vh-170px)] ${isErrorState ? 'border-red-500/50' : 'border-slate-800 hover:border-slate-600'}`
                             }`}
                             >
                             
                             {/* Left: Video Preview (Larger Size) */}
-                            <div className="w-full md:w-[46%] md:max-w-[760px] h-[300px] md:h-auto md:self-stretch bg-black relative shrink-0 border-r border-slate-800 group/media">
+                            <div className={`w-full md:w-[46%] md:max-w-[760px] h-[300px] bg-black relative shrink-0 border-r border-slate-800 group/media ${
+                                viewMode === 'sticky'
+                                    ? 'md:sticky md:top-6 md:self-start md:h-[calc(100vh-240px)] md:rounded-l-xl md:z-10'
+                                    : 'md:h-auto md:self-stretch'
+                            }`}>
                                 {hasVideo && !isErrorState ? (
                                     <div className="relative w-full h-full flex items-center justify-center bg-black">
                                         {/* Use img to display preview since these are dummy URLs */}
