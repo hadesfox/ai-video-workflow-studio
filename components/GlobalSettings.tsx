@@ -85,7 +85,7 @@ const PROMPT_OPTIONS: Record<ConfigKeys, string[]> = {
 
 // 辅助函数：快速生成指定风格的配置
 const createStyleConfig = (styleType: '2D' | 'REAL' | '3D'): Record<ConfigKeys, AgentSettings> => {
-  const config: any = {};
+  const config = {} as Record<ConfigKeys, AgentSettings>;
   const defaultModel = 'Gemini 3 Flash (标准)';
   
   // 简单的关键词映射帮助选择正确的提示词索引
@@ -261,8 +261,10 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, curren
       if (isOpen) {
           setConfig(currentSettings);
           setGenConfig(currentGenerationSettings || DEFAULT_GENERATION_SETTINGS);
-          // Simple logic to detect template, defaults to custom for simplicity
-          setSelectedTemplate('custom');
+          const matched = Object.keys(TEMPLATES).find(
+            key => JSON.stringify(TEMPLATES[key].config) === JSON.stringify(currentSettings)
+          );
+          setSelectedTemplate(matched || 'custom');
       }
   }, [isOpen, currentSettings, currentGenerationSettings]);
 
@@ -271,15 +273,16 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, curren
     const templateKey = e.target.value;
     setSelectedTemplate(templateKey);
     if (templateKey in TEMPLATES) {
-      setConfig(TEMPLATES[templateKey].config);
+      // 深拷贝，避免编辑时污染共享的模板常量
+      setConfig(structuredClone(TEMPLATES[templateKey].config));
       if (TEMPLATE_GENERATION[templateKey]) {
-        setGenConfig(TEMPLATE_GENERATION[templateKey]);
+        setGenConfig({ ...TEMPLATE_GENERATION[templateKey] });
       }
     }
   };
 
   // 处理单个配置项变更
-  const handleConfigChange = (key: ConfigKeys, field: keyof AgentSettings, value: any) => {
+  const handleConfigChange = <K extends keyof AgentSettings>(key: ConfigKeys, field: K, value: AgentSettings[K]) => {
     setConfig(prev => ({
       ...prev,
       [key]: {

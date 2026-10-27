@@ -26,6 +26,7 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
   // 解码音频并提取每根柱子的峰值
   useEffect(() => {
     let cancelled = false;
+    pendingSeek.current = null;
     setPeaks(null);
     setFailed(false);
     setProgress(0);
@@ -101,14 +102,16 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
     const ro = new ResizeObserver(draw);
     ro.observe(canvas);
     return () => ro.disconnect();
-  }, [peaks, progress, color, height]);
+  }, [peaks, progress, color]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
       if (isFinite(audio.duration) && audio.currentTime >= audio.duration) audio.currentTime = 0;
-      audio.play();
+      audio.play().catch(() => {
+        console.warn('[AudioWaveform] 播放失败，可能为浏览器自动播放限制');
+      });
     } else {
       audio.pause();
     }
@@ -123,7 +126,9 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
     if (isFinite(audio.duration) && audio.duration > 0) {
       audio.currentTime = ratio * audio.duration;
       setProgress(ratio);
-      audio.play();
+      audio.play().catch(() => {
+        console.warn('[AudioWaveform] 跳转后播放失败');
+      });
     } else {
       pendingSeek.current = ratio;
     }
@@ -169,7 +174,9 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
           if (audio && pendingSeek.current !== null && isFinite(audio.duration)) {
             audio.currentTime = pendingSeek.current * audio.duration;
             pendingSeek.current = null;
-            audio.play();
+            audio.play().catch(() => {
+              console.warn('[AudioWaveform] 元数据加载后播放失败');
+            });
           }
         }}
         onPlay={() => setPlaying(true)}

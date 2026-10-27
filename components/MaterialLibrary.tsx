@@ -66,9 +66,11 @@ const formatSize = (bytes?: number) => {
 };
 
 export const formatDuration = (seconds?: number) => {
-  if (seconds === undefined || isNaN(seconds)) return '';
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
+  if (seconds == null || !isFinite(seconds)) return '';
+  // 先四舍五入总秒数再拆分，避免出现 1:60
+  const total = Math.round(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
@@ -245,9 +247,12 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
         setUploadDuration(knownDuration);
       } else if (HAS_DURATION[uploadType]) {
         const audio = new Audio(dataUrl);
-        audio.onloadedmetadata = () => setUploadDuration(audio.duration);
+        audio.onloadedmetadata = () => {
+          if (isFinite(audio.duration)) setUploadDuration(audio.duration);
+        };
       }
     };
+    reader.onerror = () => alert('文件读取失败，请重试');
     reader.readAsDataURL(file);
   };
 
@@ -377,7 +382,7 @@ const MaterialLibrary: React.FC<MaterialLibraryProps> = ({ materials, setMateria
             </select>
             {hasActiveFilters && (
               <button
-                onClick={() => { setSelectedTags([]); setDurationFilter('ALL'); }}
+                onClick={() => { setSelectedTags([]); setDurationFilter('ALL'); setSearchQuery(''); }}
                 className="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-red-400 transition-colors"
               >
                 <RotateCcw size={12} />

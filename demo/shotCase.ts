@@ -92,14 +92,15 @@ export const createSampleShots = (episodeId: string, completed = true): Extended
   const { frontPrompt, backPrompt, shotPrompt } = SHOT_PROMPT_CASE;
   const segments = shotPrompt.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
   const ratios = ['9:16', '16:9', '16:9', '9:16', '1:1', '21:9', '4:3', '3:4', '16:9', '9:16'];
-  const now = Date.now();
 
   return Array.from({ length: 10 }).map((_, idx): ExtendedShot => {
-    const id = `shot-${episodeId}-${now}-${idx}`;
-    const body = idx === 0 ? shotPrompt : (segments[idx] || shotPrompt);
+    const id = `shot-${episodeId}-${idx}`;
+    // 第 1 个为完整案例，其余循环取案例段落；段落不足时回退到完整正文
+    const body = idx === 0 ? shotPrompt : (segments[idx % segments.length] ?? shotPrompt);
     const ratio = ratios[idx];
     const durationMatch = body.match(/^(\d+)秒/);
     const duration = idx === 0 ? 30 : (durationMatch ? Number(durationMatch[1]) : 3);
+    // 演示占位视频依赖 picsum.photos，仅用于本地预览；正式环境应替换为项目素材
     const videoUrl = `https://picsum.photos/seed/${id}-sample/${getPlaceholderSize(ratio)}`;
     return {
       id,

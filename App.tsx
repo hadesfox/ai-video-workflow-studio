@@ -22,7 +22,7 @@ const createDefaultSettings = (): Record<ConfigKeys, AgentSettings> => {
         'detailProps', 'detailScenes', 'detailChars', 'special3', 'special2', 'special1',
         'imgPromptProps', 'imgPromptScenes', 'imgPromptChars', 'storyboard'
     ];
-    const settings: any = {};
+    const settings = {} as Record<ConfigKeys, AgentSettings>;
     keys.forEach(key => {
         settings[key] = {
             model: 'Gemini 3 Flash (标准)',
@@ -91,19 +91,34 @@ const synthMusic = (notes: number[], noteDur: number): string => {
   });
 };
 
+// 音效/噪声使用固定种子的伪随机序列，保证每次生成的演示音频一致
+const createNoise = () => {
+  let seed = 20260413;
+  return () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+};
+
 // 音效：重击（噪声衰减 + 低频冲击）
-const synthImpact = (durationSec: number): string => synth(durationSec, (t) => {
-  const noise = Math.random() * 2 - 1;
-  const thump = Math.sin(2 * Math.PI * 55 * t) * Math.exp(-t * 10);
-  return (noise * Math.exp(-t * 18) + thump) * 0.6;
-});
+const synthImpact = (durationSec: number): string => {
+  const random = createNoise();
+  return synth(durationSec, (t) => {
+    const noise = random() * 2 - 1;
+    const thump = Math.sin(2 * Math.PI * 55 * t) * Math.exp(-t * 10);
+    return (noise * Math.exp(-t * 18) + thump) * 0.6;
+  });
+};
 
 // 音效：持续噪声（雨/风），可选低频调制
-const synthNoise = (durationSec: number, modHz = 0): string => synth(durationSec, (t) => {
-  const noise = Math.random() * 2 - 1;
-  const mod = modHz > 0 ? 0.5 + 0.5 * Math.sin(2 * Math.PI * modHz * t) : 1;
-  return noise * 0.35 * mod;
-});
+const synthNoise = (durationSec: number, modHz = 0): string => {
+  const random = createNoise();
+  return synth(durationSec, (t) => {
+    const noise = random() * 2 - 1;
+    const mod = modHz > 0 ? 0.5 + 0.5 * Math.sin(2 * Math.PI * modHz * t) : 1;
+    return noise * 0.35 * mod;
+  });
+};
 
 // 配音：模拟人声语调（基频起伏 + 谐波 + 音节包络）
 const synthVoice = (durationSec: number, baseFreq: number): string => synth(durationSec, (t) => {
@@ -143,30 +158,45 @@ const createDemoMaterials = (): Material[] => {
   ];
 };
 
+// 演示素材只合成一次，避免每次挂载重复生成数 MB 的 WAV
+let demoMaterialsCache: Material[] | null = null;
+const getDemoMaterials = (): Material[] => {
+  if (!demoMaterialsCache) demoMaterialsCache = createDemoMaterials();
+  return demoMaterialsCache;
+};
+
 // --- Login Component ---
+const DEMO_ACCOUNT = 'admin';
+const DEMO_PASSWORD = '123456';
+
 const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
-  const [account, setAccount] = useState('admin');
-  const [password, setPassword] = useState('123456');
+  const [account, setAccount] = useState(import.meta.env.DEV ? DEMO_ACCOUNT : '');
+  const [password, setPassword] = useState(import.meta.env.DEV ? DEMO_PASSWORD : '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const loginTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (loginTimerRef.current) window.clearTimeout(loginTimerRef.current);
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    setTimeout(() => {
-      if (account === 'admin' && password === '123456') {
+    loginTimerRef.current = window.setTimeout(() => {
+      if (account === DEMO_ACCOUNT && password === DEMO_PASSWORD) {
         onLogin();
       } else {
-        setError('账号或密码错误 (默认: admin / 123456)');
+        setError('账号或密码错误');
         setIsLoading(false);
       }
     }, 800);
   };
 
   const handleContactAdmin = () => {
-    alert('请发送邮件至 admin@vidustudio.com 获取访问权限。\n\n当前演示账号: admin\n密码: 123456');
+    alert('请联系管理员获取访问权限。');
   };
 
   return (
@@ -299,7 +329,7 @@ const App: React.FC = () => {
 
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [materials, setMaterials] = useState<Material[]>(() => createDemoMaterials()); // 素材库为全局资源，与项目解耦
+  const [materials, setMaterials] = useState<Material[]>(() => getDemoMaterials()); // 素材库为全局资源，与项目解耦
   const [worldview, setWorldview] = useState<WorldviewEntry[]>([]); 
   const [globalSettings, setGlobalSettings] = useState<Record<ConfigKeys, AgentSettings>>(createDefaultSettings()); 
   const [generationSettings, setGenerationSettings] = useState<GenerationSettings>(DEFAULT_GENERATION_SETTINGS);
@@ -338,6 +368,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleProjectSelect = () => {
+    setIsExternalView(false);
     setCurrentTab(MainTab.ASSETS);
   };
 
@@ -429,7 +460,7 @@ const App: React.FC = () => {
           />
         );
       case MainTab.REVIEW:
-        return <OnlineReview clips={editorClips} subTab={reviewSubTab} />;
+        return <OnlineReview subTab={reviewSubTab} />;
       case MainTab.PARTNER:
         return (
           <PartnerCollaboration

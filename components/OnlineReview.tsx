@@ -50,7 +50,6 @@ const COMPARE_ANNOTATIONS: Record<string, TrackAnnotation[]> = {
 };
 
 interface OnlineReviewProps {
-  clips?: any[];
   subTab?: ReviewSubTab;
 }
 
@@ -98,11 +97,23 @@ const VideoReviewPlayer: React.FC<{ item: ReviewItem, onClose: () => void }> = (
   const annotations = currentVersion === 'v1' ? annotationsV1 : annotationsV2;
   const setAnnotations = currentVersion === 'v1' ? setAnnotationsV1 : setAnnotationsV2;
 
-  const formatTime = (time: number) => {
-    const mins = Math.floor(time / 60);
-    const secs = Math.floor(time % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  // 画布缓冲区与容器实际尺寸保持一致，避免 CSS 拉伸导致批注笔画坐标错位
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(container.clientWidth * dpr));
+      canvas.height = Math.max(1, Math.round(container.clientHeight * dpr));
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -134,6 +145,7 @@ const VideoReviewPlayer: React.FC<{ item: ReviewItem, onClose: () => void }> = (
 
   const handleSendAnnotation = () => {
     if (!newAnnotation.trim()) return;
+    const hasDrawing = finalPaths.length > 0;
     setAnnotations([...annotations, {
       id: Math.random().toString(36).substr(2, 9),
       time: currentTime,
@@ -141,8 +153,8 @@ const VideoReviewPlayer: React.FC<{ item: ReviewItem, onClose: () => void }> = (
       username: '364',
       avatar: 'https://i.pravatar.cc/32?u=364',
       timestamp: Date.now(),
-      drawing: finalPaths.length > 0 ? finalPaths : undefined,
-      snapshot: canvasRef.current?.toDataURL() || ''
+      drawing: hasDrawing ? finalPaths : undefined,
+      snapshot: hasDrawing ? canvasRef.current?.toDataURL() : undefined
     }]);
     setNewAnnotation('');
     setFinalPaths([]);
@@ -177,7 +189,7 @@ const VideoReviewPlayer: React.FC<{ item: ReviewItem, onClose: () => void }> = (
             <div className="w-px h-4 bg-white/10 mx-2" />
             <button className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-500"><Share2 size={14}/> 分享</button>
             <button className="p-2 hover:bg-white/10 rounded"><Download size={16}/></button>
-            <button className="p-2 hover:bg-white/10 rounded"><Maximize2 size={16}/></button>
+            <button onClick={() => containerRef.current?.requestFullscreen().catch(() => {})} className="p-2 hover:bg-white/10 rounded"><Maximize2 size={16}/></button>
             <button className="p-2 hover:bg-white/10 rounded"><LayoutDashboard size={16}/></button>
             <button className="p-2 hover:bg-white/10 rounded"><MoreVertical size={16}/></button>
         </div>
@@ -188,7 +200,7 @@ const VideoReviewPlayer: React.FC<{ item: ReviewItem, onClose: () => void }> = (
           <div className="flex-1 relative flex items-center justify-center min-h-0" ref={containerRef}>
             <video 
               ref={videoRef}
-              src={SAMPLE_VIDEO_SRC}
+              src={sourceOfVersion(currentVersion)}
               className="w-full h-full object-contain"
               onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
               onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
@@ -219,6 +231,11 @@ const VideoReviewPlayer: React.FC<{ item: ReviewItem, onClose: () => void }> = (
                      setCurrentPath([...currentPath, newPoint]);
                 }}
                 onMouseUp={() => {
+                    if (!isDrawing || currentPath.length === 0) return;
+                    setFinalPaths([...finalPaths, {points: currentPath}]);
+                    setCurrentPath([]);
+                }}
+                onMouseLeave={() => {
                     if (!isDrawing || currentPath.length === 0) return;
                     setFinalPaths([...finalPaths, {points: currentPath}]);
                     setCurrentPath([]);
@@ -297,6 +314,9 @@ const VideoReviewPlayer: React.FC<{ item: ReviewItem, onClose: () => void }> = (
                           <span className="text-[10px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">{formatTime(anno.time)}</span>
                       </div>
                       <div className="text-sm text-slate-200">{anno.text}</div>
+                      {anno.snapshot && (
+                          <img src={anno.snapshot} alt="批注标记" className="mt-2 w-full rounded border border-white/10 bg-black/40" />
+                      )}
                       <div className="flex items-center justify-between mt-3 text-[10px] text-slate-500">
                           <span>{new Date(anno.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                           <div className="flex gap-2">
@@ -321,7 +341,7 @@ const formatTime = (time: number) => {
 };
 
 const VersionComparePlayer: React.FC<{ item: ReviewItem, onClose: () => void }> = ({ item, onClose }) => {
-  const versions = item.versions || ['v1', 'v2'];
+  const versions = item.versions && item.versions.length > 0 ? item.versions : ['v1', 'v2'];
 
   const leftRef = useRef<HTMLVideoElement>(null);
   const rightRef = useRef<HTMLVideoElement>(null);
@@ -756,8 +776,11 @@ const TimelineRow: React.FC<{
 
   // 在同一版本轨道的批注间切换
   const stepAnnotation = (delta: number) => {
+    if (annotations.length === 0) return;
     const idx = annotations.findIndex(a => a.id === openId);
-    const next = annotations[(idx + delta + annotations.length) % annotations.length];
+    // 未选中任何批注时：上一条从末尾开始，下一条从第一条开始
+    const base = idx === -1 ? (delta < 0 ? 0 : -1) : idx;
+    const next = annotations[(base + delta + annotations.length) % annotations.length];
     if (!next) return;
     setDraft('');
     setOpenId(next.id);
@@ -891,10 +914,7 @@ const TimelineRow: React.FC<{
   );
 };
 
-const OnlineReview: React.FC<OnlineReviewProps> = ({ clips = [], subTab }) => {
-  if (subTab === ReviewSubTab.FINAL_DELIVERY) {
-    return <div className="h-full flex items-center justify-center text-slate-500">成稿交付页面暂无内容...</div>
-  }
+const OnlineReviewInner: React.FC = () => {
   const [items, setItems] = useState<ReviewItem[]>([
     {
       id: '1',
@@ -972,7 +992,15 @@ const OnlineReview: React.FC<OnlineReviewProps> = ({ clips = [], subTab }) => {
   
   const handleConfirmRename = () => {
       if (!renameTarget) return;
-      setItems(items.map(i => i.id === renameTarget.item.id ? {...i, name: newName} : i));
+      if (renameTarget.type === 'VERSION') {
+          const oldVersion = renameTarget.version;
+          setItems(prev => prev.map(i => i.id === renameTarget.item.id
+              ? { ...i, versions: (i.versions || []).map(v => v === oldVersion ? newName : v) }
+              : i));
+          setVersions(prev => prev.map(v => v === oldVersion ? newName : v));
+      } else {
+          setItems(prev => prev.map(i => i.id === renameTarget.item.id ? {...i, name: newName} : i));
+      }
       setIsRenameModalOpen(false);
       setRenameTarget(null);
       setNewName('');
@@ -990,14 +1018,15 @@ const OnlineReview: React.FC<OnlineReviewProps> = ({ clips = [], subTab }) => {
 
   const handleDeleteVersion = (versionToDelete: string) => {
     if (!managingItem) return;
+    if (versions.length <= 1) return; // 至少保留一个版本
     const newVersions = versions.filter(v => v !== versionToDelete);
-    setItems(items.map(item => item.id === managingItem.id ? {...item, versions: newVersions} : item));
+    setItems(prev => prev.map(item => item.id === managingItem.id ? {...item, versions: newVersions} : item));
   };
 
   const handleUploadVersion = (item: ReviewItem) => {
       const newVersion = 'v' + ((item.versions?.length || 0) + 1);
       const newVersions = [...(item.versions || []), newVersion];
-      setItems(items.map(i => i.id === item.id ? {...i, versions: newVersions} : i));
+      setItems(prev => prev.map(i => i.id === item.id ? {...i, versions: newVersions} : i));
       alert("上传成功");
   };
 
@@ -1017,7 +1046,7 @@ const OnlineReview: React.FC<OnlineReviewProps> = ({ clips = [], subTab }) => {
       setVersions(newVersions);
       setDraggedIdx(index);
       if (managingItem) {
-         setItems(items.map(item => item.id === managingItem.id ? {...item, versions: newVersions} : item));
+         setItems(prev => prev.map(item => item.id === managingItem.id ? {...item, versions: newVersions} : item));
       }
   };
   const [shareConfig, setShareConfig] = useState({
@@ -1026,10 +1055,11 @@ const OnlineReview: React.FC<OnlineReviewProps> = ({ clips = [], subTab }) => {
     allowDownload: true,
     allowAnnotations: true,
     passwordProtected: true,
-    password: '9698',
+    password: String(Math.floor(100000 + Math.random() * 900000)),
     expiration: false,
     expirationDate: ''
   });
+  const [shareCopied, setShareCopied] = useState(false);
 
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, item: ReviewItem | null } | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -1073,9 +1103,13 @@ const OnlineReview: React.FC<OnlineReviewProps> = ({ clips = [], subTab }) => {
     setShowStatusMenu(false);
   };
 
+  const openContextMenu = (x: number, y: number, item: ReviewItem) => {
+    setContextMenu({ x, y, item });
+  };
+
   const handleContextMenu = (e: React.MouseEvent, item: ReviewItem) => {
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, item });
+    openContextMenu(e.clientX, e.clientY, item);
   };
 
   const handleItemClick = (id: string, multi: boolean) => {
@@ -1344,7 +1378,7 @@ const OnlineReview: React.FC<OnlineReviewProps> = ({ clips = [], subTab }) => {
                     onClick={(e) => {
                        e.stopPropagation();
                        const rect = e.currentTarget.getBoundingClientRect();
-                       handleContextMenu({clientX: rect.left, clientY: rect.bottom + 5, preventDefault: () => {}} as any, item);
+                       openContextMenu(rect.left, rect.bottom + 5, item);
                     }}
                     className="p-1 hover:bg-white/10 rounded-lg text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -1545,13 +1579,13 @@ const OnlineReview: React.FC<OnlineReviewProps> = ({ clips = [], subTab }) => {
                     <p>密码：{shareConfig.password}</p>
                 </div>
                 <button onClick={() => {
-                    navigator.clipboard.writeText(`请点击链接，审阅${shareConfig.name}\n链接：https://mdl.ink/T1A7yY\n密码：${shareConfig.password}`);
-                    const btn = document.getElementById('copyBtn');
-                    if (btn) {
-                        btn.textContent = '已复制';
-                        setTimeout(() => btn.textContent = '复制', 2000);
-                    }
-                }} id="copyBtn" className="w-full bg-blue-600 text-white py-2 rounded-lg mb-4">复制</button>
+                    navigator.clipboard.writeText(`请点击链接，审阅${shareConfig.name}\n链接：https://mdl.ink/T1A7yY\n密码：${shareConfig.password}`)
+                      .then(() => {
+                        setShareCopied(true);
+                        window.setTimeout(() => setShareCopied(false), 2000);
+                      })
+                      .catch(() => {});
+                }} className="w-full bg-blue-600 text-white py-2 rounded-lg mb-4">{shareCopied ? '已复制' : '复制'}</button>
                 <div className="text-sm text-blue-400 cursor-pointer" onClick={() => setIsLinkShareModalOpen(false)}>通过扫码分享</div>
              </motion.div>
           </div>
@@ -1601,7 +1635,25 @@ const OnlineReview: React.FC<OnlineReviewProps> = ({ clips = [], subTab }) => {
   );
 };
 
-const ContextMenuItem = ({ icon, label, badge, hasSubmenu, extra, className = "", onClick }: any) => (
+// 成稿交付分支放在子组件之外，避免条件 return 改变 Hook 顺序
+const OnlineReview: React.FC<OnlineReviewProps> = ({ subTab }) => {
+  if (subTab === ReviewSubTab.FINAL_DELIVERY) {
+    return <div className="h-full flex items-center justify-center text-slate-500">成稿交付页面暂无内容...</div>
+  }
+  return <OnlineReviewInner />;
+};
+
+interface ContextMenuItemProps {
+  icon: React.ReactNode;
+  label: string;
+  badge?: string;
+  hasSubmenu?: boolean;
+  extra?: boolean;
+  className?: string;
+  onClick?: () => void;
+}
+
+const ContextMenuItem = ({ icon, label, badge, hasSubmenu, extra, className = "", onClick }: ContextMenuItemProps) => (
   <div onClick={onClick} className={`flex items-center justify-between px-3 py-2 text-[13px] rounded-lg cursor-pointer hover:bg-white/5 group transition-colors ${className}`}>
     <div className="flex items-center gap-3">
       <span className="text-slate-400 group-hover:text-white transition-colors">{icon}</span>

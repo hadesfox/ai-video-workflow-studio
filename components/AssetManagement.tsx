@@ -119,6 +119,20 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   // Textarea Ref for Auto-size
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // 统一管理延时任务，组件卸载时清理，避免卸载后 setState
+  const timersRef = useRef<number[]>([]);
+  const scheduleTimeout = (fn: () => void, delay: number) => {
+    const id = window.setTimeout(() => {
+      timersRef.current = timersRef.current.filter(t => t !== id);
+      fn();
+    }, delay);
+    timersRef.current.push(id);
+  };
+  useEffect(() => () => {
+    timersRef.current.forEach(id => window.clearTimeout(id));
+    timersRef.current = [];
+  }, []);
+
   // Button Status Logic
   const hasExtracted = assets.length > 0;
   const hasGeneratedDetails = assets.some(a => a.states.some(s => !!s.prompt));
@@ -136,7 +150,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   const handleExtractAssets = () => {
     setProcessingLabel(worldviewEnabled ? '正在分析剧本、提取资产并生成世界观...' : '正在分析剧本并提取资产...');
     
-    setTimeout(() => {
+    scheduleTimeout(() => {
       // Mock Worldview Generation if enabled
       if (worldviewEnabled) {
           const mockWorldview: WorldviewEntry[] = [
@@ -229,12 +243,6 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
         }
       ];
       setAssets(skeletonAssets);
-      // Automatically select the first asset if none selected - DISABLED AS PER REQUEST
-      /*
-      if (!selectedAssetId && skeletonAssets.length > 0) {
-        setSelectedAssetId(skeletonAssets[0].id);
-      }
-      */
       setProcessingLabel(null);
     }, 1000);
   };
@@ -242,7 +250,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   // 2. 生成详情：填充 Prompt 和 Attributes
   const handleGenerateDetails = () => {
     setProcessingLabel('正在生成资产详情与 Prompt...');
-    setTimeout(() => {
+    scheduleTimeout(() => {
        type PartialStateUpdate = Partial<AssetState> & { id: string };
        type AssetUpdateData = {
           states?: PartialStateUpdate[];
@@ -358,7 +366,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   // 修改：一键生主图 (生成所有资产的主状态图)
   const handleOneClickGen = () => {
     setProcessingLabel('正在批量生成所有资产的主状态图像...');
-    setTimeout(() => {
+    scheduleTimeout(() => {
       setAssets(prev => prev.map(a => {
         // 查找主状态（通常是第一个，或者名称包含常规/主状态的）
         const newStates = [...a.states];
@@ -392,7 +400,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
   // 新增：一键生状态图 (生成所有资产的非主状态图)
   const handleOneClickStateGen = () => {
     setProcessingLabel('正在批量生成所有资产的变体状态图像...');
-    setTimeout(() => {
+    scheduleTimeout(() => {
         setAssets(prev => prev.map(a => {
             const newStates = a.states.map((s, idx) => {
                 // 跳过第一个状态（主状态）
@@ -418,7 +426,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
     if (!selectedAssetId || !selectedStateId) return;
 
     setIsRegenerating(true);
-    setTimeout(() => {
+    scheduleTimeout(() => {
       const newImageUrl = `https://picsum.photos/seed/${selectedStateId}-${Date.now()}/800/600`;
       
       setAssets(prev => prev.map(a => {
@@ -466,6 +474,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
           );
         }
       };
+      reader.onerror = () => alert('图片读取失败，请重试');
       reader.readAsDataURL(file);
       // Reset value to allow re-uploading same file
       event.target.value = ''; 
@@ -670,10 +679,6 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
     ? activeAsset.states.find(s => s.id === selectedStateId) 
     : null;
   
-  // Find initial state (first state) for reference
-  const initialAssetState = activeAsset ? activeAsset.states[0] : null;
-  const isViewingInitialState = activeModalState && initialAssetState && activeModalState.id === initialAssetState.id;
-
   // Auto-resize prompt textarea
   useEffect(() => {
     if (activeModalState && promptTextareaRef.current) {
@@ -828,7 +833,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
               </button>
               
               <button 
-                onClick={() => {}}
+                onClick={() => alert('演示版本：批量创建资产功能尚未接入后端')}
                 className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition-colors shrink-0"
               >
                 <Layers size={16} />
@@ -892,17 +897,17 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
               {/* Tab & Search Row */}
               <div className="flex items-center justify-between border-b border-white/5 pb-2">
                 <div className="flex items-center gap-8 h-full">
-                  {[
+                  {([
                     { label: '全部', count: assets.length, key: 'ALL' },
                     { label: '角色', count: assets.filter(a => a.type === 'CHARACTER').length, key: 'CHARACTER' },
                     { label: '场景', count: assets.filter(a => a.type === 'SCENE').length, key: 'SCENE' },
                     { label: '道具', count: assets.filter(a => a.type === 'PROP').length, key: 'PROP' }
-                  ].map((tab) => {
+                  ] as const).map((tab) => {
                     const isActive = activeTypeTab === tab.key;
                     return (
                       <button 
                         key={tab.key}
-                        onClick={() => setActiveTypeTab(tab.key as any)}
+                        onClick={() => setActiveTypeTab(tab.key)}
                         className={`h-full flex items-center gap-2 pb-3 text-sm font-medium relative transition-colors ${isActive ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
                       >
                         <span>{tab.label}</span>
@@ -965,9 +970,8 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                           <h3 className="text-sm font-bold text-slate-100 mb-0.5 group-hover:text-blue-400 transition-colors">{asset.name}</h3>
                           <p className="text-[11px] text-slate-500 line-clamp-1 mb-1.5 opacity-80">{asset.description}</p>
                           
-                          {/* Episode & Image Stats */}
+                          {/* Image Stats */}
                           <div className="flex flex-col items-center gap-0.5">
-                            <p className="text-[11px] font-bold text-emerald-400">第 5、10 集</p>
                             <p className="text-[10px] text-slate-500">共 {asset.states.length} 个形象</p>
                           </div>
                         </div>
@@ -989,7 +993,11 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-slate-400">资产库 <span className="text-slate-600 ml-1">{assets.length}</span></h3>
                       <div className="flex items-center gap-1">
-                        <button className="p-1 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-colors"><Settings2 size={14} /></button>
+                        <button 
+                          onClick={() => setShowListModal(true)}
+                          className="p-1 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-colors"
+                          title="资产清单"
+                        ><Settings2 size={14} /></button>
                       </div>
                     </div>
                     
@@ -1005,15 +1013,15 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                     </div>
 
                     <div className="flex justify-between p-1 bg-black/20 rounded-lg border border-white/5">
-                      {[
+                      {([
                         { icon: AlignLeft, key: 'ALL' },
                         { icon: User, key: 'CHARACTER' },
                         { icon: Map, key: 'SCENE' },
                         { icon: Box, key: 'PROP' }
-                      ].map(tab => (
+                      ] as const).map(tab => (
                         <button 
                           key={tab.key}
-                          onClick={() => setActiveTypeTab(tab.key as any)}
+                          onClick={() => setActiveTypeTab(tab.key)}
                           className={`p-1.5 rounded-md transition-all ${activeTypeTab === tab.key ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-400'}`}
                         >
                           <tab.icon size={16} />
@@ -1039,8 +1047,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                           <div className="flex-1 min-w-0">
                             <h4 className={`text-sm font-bold truncate ${isActive ? 'text-white' : 'text-slate-200'}`}>{asset.name}</h4>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <span className={`text-[10px] font-medium ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>第 5, 10 集</span>
-                              <span className={`text-[10px] font-medium opacity-50 ${isActive ? 'text-white' : 'text-slate-600'}`}>• {asset.states.length} 状态</span>
+                              <span className={`text-[10px] font-medium ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>{asset.states.length} 状态</span>
                             </div>
                           </div>
                           <ChevronRight size={14} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-600 opacity-0 group-hover:opacity-100'}`} />
@@ -1128,9 +1135,6 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                               <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed opacity-70 mb-4 font-medium italic">
                                 {state.description || "点击进入以添加描述或生成图片资产。"}
                               </p>
-                              <div className="flex items-center gap-2">
-                                <span className={`text-[10px] font-bold uppercase tracking-widest text-blue-500`}>第 51 集</span>
-                              </div>
                             </div>
                           </motion.div>
                         ))}
@@ -1205,15 +1209,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                         ref={fileInputRef}
                         className="hidden"
                         accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file && activeAsset && activeModalState) {
-                             // This is a bit tricky since handleImageUpload in the original code might not take file directly
-                             // But let's assume it works with the ref. The original code uses:
-                             // onChange={handleImageUpload}
-                             // I'll keep the original behavior by just triggering the ref.
-                          }
-                        }}
+                        onChange={handleImageUpload}
                      />
                   </div>
 
@@ -1246,6 +1242,7 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                              </label>
                           </div>
                           <textarea 
+                             ref={promptTextareaRef}
                              value={activeModalState.prompt || ''}
                              onChange={(e) => handlePromptChange(e.target.value)}
                              className="w-full bg-transparent text-sm text-slate-300 font-mono leading-relaxed p-0 border-none focus:ring-0 resize-none min-h-[8rem]"

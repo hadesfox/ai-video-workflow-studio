@@ -198,6 +198,54 @@ const INITIAL_ROLES: Role[] = [
       'FRONT_PROJECT_CREATE', 'FRONT_PROJECT_RENAME', 'FRONT_PROJECT_STATUS'
     ]
   },
+  { 
+    id: 'DESIGNER', 
+    name: '设计', 
+    permissions: ['FRONT_PROJECT_CREATE', 'FRONT_PROJECT_STATUS']
+  },
+  { 
+    id: 'DEVELOPER', 
+    name: '开发', 
+    permissions: ['FRONT_PROJECT_CREATE', 'FRONT_PROJECT_STATUS', 'BACK_ACCESS']
+  },
+  { 
+    id: 'PM', 
+    name: '项目经理', 
+    permissions: [
+      'FRONT_PROJECT_CREATE', 'FRONT_PROJECT_RENAME', 'FRONT_PROJECT_STATUS', 'FRONT_PROJECT_GROUP', 'FRONT_PROJECT_SCOPE',
+      'BACK_ACCESS'
+    ]
+  },
+  { 
+    id: 'QA', 
+    name: '测试', 
+    permissions: ['BACK_ACCESS']
+  },
+  { 
+    id: 'MARKETING', 
+    name: '市场', 
+    permissions: ['FRONT_PROJECT_SCOPE']
+  },
+  { 
+    id: 'SALES', 
+    name: '销售', 
+    permissions: ['FRONT_PROJECT_SCOPE']
+  },
+  { 
+    id: 'HR', 
+    name: '人事', 
+    permissions: ['BACK_USER_ADD']
+  },
+  { 
+    id: 'FINANCE', 
+    name: '财务', 
+    permissions: ['BACK_ACCESS']
+  },
+  { 
+    id: 'SUPPORT', 
+    name: '客服', 
+    permissions: ['FRONT_PROJECT_SCOPE']
+  },
 ];
 
 const INITIAL_GROUPS: ProjectGroup[] = [
@@ -451,9 +499,9 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
     systemPrompt: 'You are a helpful assistant.'
   });
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatTimerRef = useRef<number | null>(null);
 
   // --- Usage Stats State ---
-  const [usageFilterType, setUsageFilterType] = useState<'INDIVIDUAL' | 'GROUP'>('INDIVIDUAL');
   const [usageSortOrder, setUsageSortOrder] = useState<'ASC' | 'DESC'>('DESC');
   const [usageDateRange, setUsageDateRange] = useState({ 
     start: '2026-04-06', 
@@ -472,18 +520,14 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
     { id: '6', username: 'zhouba', realName: '周八', totalTasks: 2, success: 2, failed: 0, rate: '100.00%', tokens: 325800, cost: 14.9868, videoDuration: '15秒', totalTime: '8分13秒', date: '2026-04-06' },
   ];
 
-  const MOCK_USAGE_GROUP = [
-    { id: 'g1', group: '设计A组', generations: 330, tokens: 1340000, cost: 37.0 },
-    { id: 'g2', group: '设计B组', generations: 85, tokens: 320000, cost: 8.9 },
-    { id: 'g3', group: '开发组', generations: 45, tokens: 150000, cost: 4.2 },
-  ];
-
+  // 按费用排序并应用用户名/真实姓名筛选
   const sortedIndividual = [...MOCK_USAGE_INDIVIDUAL].sort((a, b) => {
       return usageSortOrder === 'ASC' ? a.cost - b.cost : b.cost - a.cost;
-  });
-
-  const sortedGroup = [...MOCK_USAGE_GROUP].sort((a, b) => {
-      return usageSortOrder === 'ASC' ? a.cost - b.cost : b.cost - a.cost;
+  }).filter(item => {
+      const username = usernameFilter.trim().toLowerCase();
+      const realName = realNameFilter.trim();
+      return (!username || item.username.toLowerCase().includes(username))
+          && (!realName || item.realName.includes(realName));
   });
 
   const menuItems = [
@@ -652,7 +696,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
     const newRole: Role = {
       id: newId,
       name: newRoleName,
-      permissions: ['SYS_VIEW']
+      permissions: []
     };
     setRoles([...roles, newRole]);
     setShowAddRoleModal(false);
@@ -678,7 +722,9 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
     setChatMessages(prev => [...prev, newMessage]);
     setChatInput('');
     
-    setTimeout(() => {
+    if (chatTimerRef.current !== null) window.clearTimeout(chatTimerRef.current);
+    chatTimerRef.current = window.setTimeout(() => {
+        chatTimerRef.current = null;
         setChatMessages(prev => [...prev, { id: Date.now() + 1, role: 'model', text: '这是一个模拟回复。AI 正在思考...' }]);
         if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }, 1000);
@@ -687,6 +733,16 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
   useEffect(() => {
     if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  // 组件卸载时清理未触发的模拟回复定时器
+  useEffect(() => () => {
+    if (chatTimerRef.current !== null) window.clearTimeout(chatTimerRef.current);
+  }, []);
+
+  // 演示版占位操作提示
+  const notifyMock = (action: string) => {
+    alert(`演示版本：「${action}」功能尚未接入后端`);
+  };
 
   // --- Render ---
 
@@ -777,7 +833,10 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                                 />
                                 <Filter className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
                             </div>
-                            <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-500/20">
+                            <button 
+                                onClick={() => notifyMock('新增配置')}
+                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-500/20"
+                            >
                                 <Plus size={16} /> 新增配置
                             </button>
                         </div>
@@ -813,10 +872,16 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                                     <div className="col-span-2 font-mono text-xs text-slate-500">{item.model}</div>
                                     <div className="col-span-1 text-xs text-slate-500">{item.thinking ? '开启' : '关闭'}</div>
                                     <div className="col-span-1 flex justify-center gap-3">
-                                        <button className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs transition-colors">
+                                        <button 
+                                            onClick={() => notifyMock(`编辑配置 ${item.name}`)}
+                                            className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs transition-colors"
+                                        >
                                             <Edit size={14} /> 编辑
                                         </button>
-                                        <button className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs transition-colors">
+                                        <button 
+                                            onClick={() => notifyMock(`删除配置 ${item.name}`)}
+                                            className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs transition-colors"
+                                        >
                                             <Trash2 size={14} /> 删除
                                         </button>
                                     </div>
@@ -857,7 +922,10 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                         <span className="font-bold text-slate-700 dark:text-slate-200">提示词类型列表</span>
                         <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded font-medium">3 个类型</span>
                      </div>
-                     <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-500/20">
+                     <button 
+                        onClick={() => notifyMock('新增类型')}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-500/20"
+                     >
                         <Plus size={16} /> 新增类型
                      </button>
                   </div>
@@ -886,10 +954,16 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                               </span>
                            </div>
                            <div className="col-span-2 flex justify-center gap-4 opacity-80 group-hover:opacity-100 transition-opacity">
-                              <button className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs transition-colors">
+                              <button 
+                                 onClick={() => notifyMock(`编辑类型 ${row.name}`)}
+                                 className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs transition-colors"
+                              >
                                  <Edit size={14} /> 编辑
                               </button>
-                              <button className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs transition-colors">
+                              <button 
+                                 onClick={() => notifyMock(`删除类型 ${row.name}`)}
+                                 className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs transition-colors"
+                              >
                                  <Trash2 size={14} /> 删除
                               </button>
                            </div>
@@ -1028,6 +1102,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                           <Settings size={16} /> 管理模板
                        </button>
                        <button 
+                          onClick={() => notifyMock('保存配置')}
                           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium shadow-md shadow-blue-500/20 transition-colors"
                        >
                           <Save size={16} /> 保存配置
@@ -1315,7 +1390,10 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                   {/* Header */}
                   <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
                     <h3 className="text-lg font-bold text-slate-800 dark:text-white">Seedance 数据统计</h3>
-                    <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-500/20">
+                    <button 
+                      onClick={() => notifyMock('手动触发统计')}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-500/20"
+                    >
                       <RefreshCw size={16} /> 手动触发统计
                     </button>
                   </div>
@@ -1378,10 +1456,16 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
                     </div>
 
                     <div className="flex items-center gap-3 ml-auto">
-                      <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                      <button 
+                        onClick={() => notifyMock('查询统计')}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                      >
                         <Search size={16} /> 查询
                       </button>
-                      <button className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                      <button 
+                        onClick={() => notifyMock('导出统计')}
+                        className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                      >
                         <Download size={16} /> 导出
                       </button>
                     </div>
@@ -1456,7 +1540,7 @@ const BackendManagement: React.FC<BackendManagementProps> = ({ onExit, groups, s
 
                     {/* Pagination */}
                     <div className="mt-6 flex items-center justify-end gap-4 text-sm text-slate-500">
-                      <span>共 6 条</span>
+                      <span>共 {sortedIndividual.length} 条</span>
                       <div className="flex items-center gap-1">
                         <button className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors disabled:opacity-30" disabled>
                           <ChevronLeft size={16} />

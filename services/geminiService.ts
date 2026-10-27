@@ -1,9 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize the API client
-// Note: In a real environment, process.env.API_KEY would be populated.
-// Since we cannot prompt for it, this service is set up to work once the key is present.
-const apiKey = process.env.API_KEY || 'DEMO_KEY_PLACEHOLDER'; 
+// Note: 仅用于本地演示；正式环境应通过后端代理调用，避免把密钥打进前端包。
+const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) || 'DEMO_KEY_PLACEHOLDER';
 const ai = new GoogleGenAI({ apiKey });
 
 /**
