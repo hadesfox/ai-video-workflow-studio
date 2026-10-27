@@ -127,7 +127,9 @@ const TEMPLATES: Record<string, { label: string; config: Record<ConfigKeys, Agen
 };
 
 // 生成设置选项
-const DIRECT_MODEL_OPTIONS = ['Gemini 3 Flash (标准)', 'Gemini 3 Pro (高智)', 'Midjourney v7', 'Seedream 3.0'];
+const IMAGE_MODEL_OPTIONS = ['gptimage2', 'gptimage2.5', 'banana2'];
+const DIRECT_MODEL_OPTIONS = IMAGE_MODEL_OPTIONS;
+const FINAL_MODEL_OPTIONS = IMAGE_MODEL_OPTIONS;
 const MJ_MODEL_OPTIONS = ['Midjourney v7', 'Midjourney v6.1', 'Niji 6'];
 const MJ_PROMPT_OPTIONS = ['MJ出图-通用', 'MJ出图-人物特写', 'MJ出图-场景概念', 'MJ出图-电影感'];
 const STYLE_MODEL_OPTIONS = ['Gemini 3 Flash (标准)', 'Gemini 3 Pro (高智)', 'GPT-Image 1'];
@@ -137,27 +139,30 @@ const STYLE_PROMPT_OPTIONS = ['风格转化-通用', '风格转化-2D动画', '�
 const TEMPLATE_GENERATION: Record<string, GenerationSettings> = {
   '2d': {
     template: 'MJ_TO_IMAGE',
-    directModel: 'Gemini 3 Flash (标准)',
+    directModel: 'banana2',
     mjModel: 'Niji 6',
     mjPrompt: 'MJ出图-人物特写',
     styleModel: 'Gemini 3 Flash (标准)',
     stylePrompt: '风格转化-2D动画',
+    finalModel: 'gptimage2.5',
   },
   'realism': {
     template: 'IMAGE_DIRECT',
-    directModel: 'Gemini 3 Pro (高智)',
+    directModel: 'gptimage2.5',
     mjModel: 'Midjourney v7',
     mjPrompt: 'MJ出图-电影感',
     styleModel: 'Gemini 3 Pro (高智)',
     stylePrompt: '风格转化-真实质感',
+    finalModel: 'gptimage2',
   },
   '3d': {
     template: 'MJ_TO_IMAGE',
-    directModel: 'Gemini 3 Flash (标准)',
+    directModel: 'gptimage2',
     mjModel: 'Midjourney v7',
     mjPrompt: 'MJ出图-场景概念',
     styleModel: 'Gemini 3 Pro (高智)',
     stylePrompt: '风格转化-3D渲染',
+    finalModel: 'banana2',
   },
 };
 
@@ -512,9 +517,9 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, curren
                       </div>
                     </div>
 
-                    {/* 配置2：image 风格转化 */}
+                    {/* 配置2：风格转化 */}
                     <div>
-                      <h4 className="text-gray-700 mb-4 font-bold border-l-4 border-green-600 pl-3">配置 2 · image 风格转化</h4>
+                      <h4 className="text-gray-700 mb-4 font-bold border-l-4 border-green-600 pl-3">配置 2 · 风格转化</h4>
                       <div className="bg-gray-300 border border-gray-300 rounded">
                         <div className="flex items-center bg-gray-300">
                           <div className="md:w-48 py-3 text-sm text-gray-800 font-medium pl-4 bg-gray-200/50">模型选择</div>
@@ -538,6 +543,27 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, curren
                               value={genConfig.stylePrompt}
                               onChange={(val) => handleGenChange('stylePrompt', val)}
                             />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 配置3：生成模型 */}
+                    <div>
+                      <h4 className="text-gray-700 mb-4 font-bold border-l-4 border-green-600 pl-3">配置 3 · 生成模型</h4>
+                      <div className="bg-gray-300 border border-gray-300 rounded">
+                        <div className="flex items-center bg-gray-300">
+                          <div className="md:w-48 py-3 text-sm text-gray-800 font-medium pl-4 bg-gray-200/50">生成模型</div>
+                          <div className="flex-1 bg-white p-1">
+                            <select
+                              value={genConfig.finalModel}
+                              onChange={(e) => handleGenChange('finalModel', e.target.value)}
+                              className="w-full bg-transparent text-gray-700 text-sm px-3 py-2 outline-none cursor-pointer hover:bg-gray-50 rounded transition-colors"
+                            >
+                              {FINAL_MODEL_OPTIONS.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
                           </div>
                         </div>
                       </div>
