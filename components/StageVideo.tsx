@@ -93,6 +93,8 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
   // 参考素材：资产管理引用弹窗 & 操作反馈
   const [assetPickerShotId, setAssetPickerShotId] = useState<string | null>(null);
   const [refFeedback, setRefFeedback] = useState<{ shotId: string; message: string } | null>(null);
+  // 全屏查看 / 编辑提示词
+  const [promptFullscreenShotId, setPromptFullscreenShotId] = useState<string | null>(null);
   // Top Action Buttons State
   const [batchMenuOpen, setBatchMenuOpen] = useState(false); // 批量操作下拉
   const [lineartGenerating, setLineartGenerating] = useState(false); // 线稿分镜生成中
@@ -1469,10 +1471,11 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                                 </div>
 
                                 {/* Auto-growing Prompt Editor (Grid Method) */}
-                                <div
-                                    data-focus-scroll={viewMode === 'focus' ? 'prompt' : undefined}
-                                    className={`relative w-full border border-slate-800 rounded-lg bg-slate-950 transition-all focus-within:ring-1 focus-within:ring-blue-500/50 ${viewMode === 'focus' ? 'flex-1 min-h-0 overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}
-                                >
+                                <div className={`relative w-full ${viewMode === 'focus' ? 'flex-1 min-h-0' : ''}`}>
+                                    <div
+                                        data-focus-scroll={viewMode === 'focus' ? 'prompt' : undefined}
+                                        className={`w-full border border-slate-800 rounded-lg bg-slate-950 transition-all focus-within:ring-1 focus-within:ring-blue-500/50 ${viewMode === 'focus' ? 'h-full overflow-y-auto custom-scrollbar pb-10' : 'overflow-hidden'}`}
+                                    >
                                     {/* 固定前置提示词（不可编辑） */}
                                     {promptParts.front && (
                                         <div
@@ -1509,6 +1512,16 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
                                         >
                                             {promptParts.back.trimStart()}
                                         </div>
+                                    )}
+                                    </div>
+                                    {viewMode === 'focus' && (
+                                        <button
+                                            onClick={() => setPromptFullscreenShotId(shot.id)}
+                                            className="absolute bottom-2 right-2 z-10 flex items-center justify-center w-7 h-7 rounded-md bg-slate-800/90 border border-slate-600 text-slate-300 hover:text-white hover:bg-slate-700 backdrop-blur transition-colors"
+                                            title="全屏查看 / 编辑提示词"
+                                        >
+                                            <Maximize2 size={14} />
+                                        </button>
                                     )}
                                 </div>
 
@@ -2109,6 +2122,50 @@ const StageVideo: React.FC<StageVideoProps> = ({ episodes, setEpisodes, assets, 
             </div>
          </div>
       )}
+
+      {/* Fullscreen Prompt Modal：全屏查看 / 编辑提示词 */}
+      {promptFullscreenShotId && (() => {
+         const shot = activeEpisode?.shots.find(s => s.id === promptFullscreenShotId);
+         if (!shot) return null;
+         const parts = splitFrontBack(shot.description);
+         const cfg = getGenConfig(shot);
+         const shotIndex = activeEpisode ? activeEpisode.shots.findIndex(s => s.id === shot.id) : 0;
+         return (
+            <div className="fixed inset-0 z-[90] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+               <div className="w-[80vw] max-w-[1680px] h-[80vh] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
+                  <div className="flex items-center gap-3 text-white font-bold">
+                     <Wand2 size={18} className="text-indigo-400" />
+                     <span>分镜提示词 · SHOT {String(shotIndex + 1).padStart(2, '0')}</span>
+                     <span className="text-xs font-normal text-slate-500">仅显示可编辑正文（前后提示词已隐藏）</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                     <span className="text-xs text-slate-500">{parts.body.length} 字</span>
+                     <button
+                        onClick={() => setPromptFullscreenShotId(null)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 text-sm transition-colors"
+                     >
+                        <CheckCircle2 size={14} />
+                        <span>完成</span>
+                     </button>
+                     <button onClick={() => setPromptFullscreenShotId(null)} className="text-slate-500 hover:text-white transition-colors" title="关闭">
+                        <X size={20} />
+                     </button>
+                  </div>
+               </div>
+               <div className="flex-1 min-h-0 p-4">
+                  <textarea
+                     value={parts.body}
+                     onChange={(e) => handleShotPromptChange(shot.id, parts.front + e.target.value + parts.back)}
+                     className={`w-full h-full p-4 rounded-lg border border-slate-700 bg-slate-900 text-slate-200 ${fontSizeClass(cfg.fontSize)} font-mono leading-relaxed focus:outline-none focus:ring-1 focus:ring-blue-500/60 resize-none`}
+                     autoFocus
+                     spellCheck={false}
+                  />
+               </div>
+               </div>
+            </div>
+         );
+      })()}
 
       {/* Asset Picker Modal：从资产管理引用资产 */}
       {assetPickerShotId && (() => {

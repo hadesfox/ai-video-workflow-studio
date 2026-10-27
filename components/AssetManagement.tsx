@@ -882,10 +882,6 @@ const AssetManagement: React.FC<AssetManagementProps> = ({ assets, setAssets, su
                   <Layers size={16} />
                   <span>一键生状态图</span>
                 </button>
-                <button className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors ml-2 shrink-0">
-                  <Settings2 size={18} />
-                  <span className="sr-only">全局设置</span>
-                </button>
               </div>
             </div>
           </div>

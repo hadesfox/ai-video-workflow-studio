@@ -207,6 +207,31 @@ export interface AgentSettings {
   enabled?: boolean; // 开关状态
 }
 
+// ==================== 生成设置 ====================
+
+export type GenerationTemplateKey = 'IMAGE_DIRECT' | 'MJ_TO_IMAGE';
+
+export interface GenerationSettings {
+  template: GenerationTemplateKey;
+  /** image 直出：生成模型 */
+  directModel: string;
+  /** mj 转 image - 配置1 mj 出图 */
+  mjModel: string;
+  mjPrompt: string;
+  /** mj 转 image - 配置2 image 风格转化 */
+  styleModel: string;
+  stylePrompt: string;
+}
+
+export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
+  template: 'IMAGE_DIRECT',
+  directModel: 'Gemini 3 Flash (标准)',
+  mjModel: 'Midjourney v7',
+  mjPrompt: 'MJ出图-通用',
+  styleModel: 'Gemini 3 Pro (高智)',
+  stylePrompt: '风格转化-通用',
+};
+
 export interface ReviewItem {
   id: string;
   name: string;

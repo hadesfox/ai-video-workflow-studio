@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Save, LayoutTemplate, Search, ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react';
-import { ConfigKeys, AgentSettings } from '../types';
+import { X, Save, LayoutTemplate, Search, ChevronDown, ToggleLeft, ToggleRight, Layers } from 'lucide-react';
+import { ConfigKeys, AgentSettings, GenerationSettings, GenerationTemplateKey, DEFAULT_GENERATION_SETTINGS } from '../types';
 
 interface GlobalSettingsProps {
   isOpen: boolean;
   onClose: () => void;
   currentSettings: Record<ConfigKeys, AgentSettings>;
-  onSave: (settings: Record<ConfigKeys, AgentSettings>) => void;
+  currentGenerationSettings: GenerationSettings;
+  onSave: (settings: Record<ConfigKeys, AgentSettings>, generationSettings: GenerationSettings) => void;
 }
 
 // 配置项标签映射 - Adjusted order and split keys
@@ -125,6 +126,41 @@ const TEMPLATES: Record<string, { label: string; config: Record<ConfigKeys, Agen
   }
 };
 
+// 生成设置选项
+const DIRECT_MODEL_OPTIONS = ['Gemini 3 Flash (标准)', 'Gemini 3 Pro (高智)', 'Midjourney v7', 'Seedream 3.0'];
+const MJ_MODEL_OPTIONS = ['Midjourney v7', 'Midjourney v6.1', 'Niji 6'];
+const MJ_PROMPT_OPTIONS = ['MJ出图-通用', 'MJ出图-人物特写', 'MJ出图-场景概念', 'MJ出图-电影感'];
+const STYLE_MODEL_OPTIONS = ['Gemini 3 Flash (标准)', 'Gemini 3 Pro (高智)', 'GPT-Image 1'];
+const STYLE_PROMPT_OPTIONS = ['风格转化-通用', '风格转化-2D动画', '风格转化-真实质感', '风格转化-3D渲染'];
+
+// 主配置模板对应的生成设置（与 Agent 配置共用同一套模板）
+const TEMPLATE_GENERATION: Record<string, GenerationSettings> = {
+  '2d': {
+    template: 'MJ_TO_IMAGE',
+    directModel: 'Gemini 3 Flash (标准)',
+    mjModel: 'Niji 6',
+    mjPrompt: 'MJ出图-人物特写',
+    styleModel: 'Gemini 3 Flash (标准)',
+    stylePrompt: '风格转化-2D动画',
+  },
+  'realism': {
+    template: 'IMAGE_DIRECT',
+    directModel: 'Gemini 3 Pro (高智)',
+    mjModel: 'Midjourney v7',
+    mjPrompt: 'MJ出图-电影感',
+    styleModel: 'Gemini 3 Pro (高智)',
+    stylePrompt: '风格转化-真实质感',
+  },
+  '3d': {
+    template: 'MJ_TO_IMAGE',
+    directModel: 'Gemini 3 Flash (标准)',
+    mjModel: 'Midjourney v7',
+    mjPrompt: 'MJ出图-场景概念',
+    styleModel: 'Gemini 3 Pro (高智)',
+    stylePrompt: '风格转化-3D渲染',
+  },
+};
+
 // Searchable Select Component
 const SearchableSelect = ({ 
   options, 
@@ -209,26 +245,31 @@ const SearchableSelect = ({
   );
 };
 
-const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, currentSettings, onSave }) => {
+const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, currentSettings, currentGenerationSettings, onSave }) => {
   const [activeTab, setActiveTab] = useState<'AGENT' | 'GEN'>('AGENT');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('custom');
   const [config, setConfig] = useState<Record<ConfigKeys, AgentSettings>>(currentSettings);
+  const [genConfig, setGenConfig] = useState<GenerationSettings>(currentGenerationSettings || DEFAULT_GENERATION_SETTINGS);
 
   // Sync state when props change
   useEffect(() => {
       if (isOpen) {
           setConfig(currentSettings);
+          setGenConfig(currentGenerationSettings || DEFAULT_GENERATION_SETTINGS);
           // Simple logic to detect template, defaults to custom for simplicity
           setSelectedTemplate('custom');
       }
-  }, [isOpen, currentSettings]);
+  }, [isOpen, currentSettings, currentGenerationSettings]);
 
-  // 当模板改变时，更新配置
+  // 当模板改变时，同时更新 Agent 配置与生成设置
   const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const templateKey = e.target.value;
     setSelectedTemplate(templateKey);
     if (templateKey in TEMPLATES) {
       setConfig(TEMPLATES[templateKey].config);
+      if (TEMPLATE_GENERATION[templateKey]) {
+        setGenConfig(TEMPLATE_GENERATION[templateKey]);
+      }
     }
   };
 
@@ -244,8 +285,14 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, curren
     setSelectedTemplate('custom'); // 只要手动修改了，就变成自定义
   };
 
+  // 处理生成设置变更
+  const handleGenChange = <K extends keyof GenerationSettings>(field: K, value: GenerationSettings[K]) => {
+    setGenConfig(prev => ({ ...prev, [field]: value }));
+    setSelectedTemplate('custom');
+  };
+
   const handleSave = () => {
-      onSave(config);
+      onSave(config, genConfig);
   };
 
   if (!isOpen) return null;
@@ -291,21 +338,24 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, curren
           <div className="flex-1 bg-gray-300 p-8 overflow-y-auto">
             
             {/* 顶部：模板选择 */}
-            <div className="bg-white/50 p-4 rounded mb-8 flex items-center space-x-4 border border-white">
-              <div className="flex items-center space-x-2 text-gray-700 font-bold">
-                <LayoutTemplate size={20} />
-                <span>配置模板:</span>
+            <div className="bg-white/50 p-4 rounded mb-8 border border-white">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 text-gray-700 font-bold">
+                  <LayoutTemplate size={20} />
+                  <span>配置模板:</span>
+                </div>
+                <select 
+                  value={selectedTemplate}
+                  onChange={handleTemplateChange}
+                  className="flex-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                >
+                  {Object.entries(TEMPLATES).map(([key, t]) => (
+                    <option key={key} value={key}>{t.label}</option>
+                  ))}
+                  <option value="custom">自定义 (Custom)</option>
+                </select>
               </div>
-              <select 
-                value={selectedTemplate}
-                onChange={handleTemplateChange}
-                className="flex-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-              >
-                {Object.entries(TEMPLATES).map(([key, t]) => (
-                  <option key={key} value={key}>{t.label}</option>
-                ))}
-                <option value="custom">自定义 (Custom)</option>
-              </select>
+              <p className="text-[11px] text-gray-500 mt-2 pl-7">主配置模板由后台统一维护，切换后会同时更新 Agent 配置与生成设置。</p>
             </div>
 
             {/* 标题：各环节agent */}
@@ -389,11 +439,111 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ isOpen, onClose, curren
               </div>
             )}
 
-            {/* Placeholder for Gen Settings */}
+            {/* 生成设置 */}
             {activeTab === 'GEN' && (
-              <div className="flex flex-col items-center justify-center h-64 text-gray-500 border-2 border-dashed border-gray-400 rounded-xl">
-                <p>暂无生成设置项</p>
-                <p className="text-sm mt-2">请切换至 Agent 配置进行调整</p>
+              <div className="space-y-6">
+                {/* 生成模板 */}
+                <div className="bg-white/50 p-4 rounded flex items-center space-x-4 border border-white">
+                  <div className="flex items-center space-x-2 text-gray-700 font-bold">
+                    <Layers size={20} />
+                    <span>生成模板:</span>
+                  </div>
+                  <select
+                    value={genConfig.template}
+                    onChange={(e) => handleGenChange('template', e.target.value as GenerationTemplateKey)}
+                    className="flex-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                  >
+                    <option value="IMAGE_DIRECT">image 直出</option>
+                    <option value="MJ_TO_IMAGE">mj 转 image</option>
+                  </select>
+                </div>
+
+                {/* image 直出：仅生成模型 */}
+                {genConfig.template === 'IMAGE_DIRECT' ? (
+                  <div>
+                    <h4 className="text-gray-700 mb-4 font-bold border-l-4 border-green-600 pl-3">生成设置</h4>
+                    <div className="bg-gray-300 border border-gray-300 rounded">
+                      <div className="flex items-center bg-gray-300">
+                        <div className="md:w-48 py-3 text-sm text-gray-800 font-medium pl-4 bg-gray-200/50">生成模型</div>
+                        <div className="flex-1 bg-white p-1">
+                          <select
+                            value={genConfig.directModel}
+                            onChange={(e) => handleGenChange('directModel', e.target.value)}
+                            className="w-full bg-transparent text-gray-700 text-sm px-3 py-2 outline-none cursor-pointer hover:bg-gray-50 rounded transition-colors"
+                          >
+                            {DIRECT_MODEL_OPTIONS.map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* 配置1：mj 出图 */}
+                    <div>
+                      <h4 className="text-gray-700 mb-4 font-bold border-l-4 border-green-600 pl-3">配置 1 · mj 出图</h4>
+                      <div className="bg-gray-300 border border-gray-300 rounded">
+                        <div className="flex items-center bg-gray-300">
+                          <div className="md:w-48 py-3 text-sm text-gray-800 font-medium pl-4 bg-gray-200/50">模型选择</div>
+                          <div className="flex-1 bg-white p-1">
+                            <select
+                              value={genConfig.mjModel}
+                              onChange={(e) => handleGenChange('mjModel', e.target.value)}
+                              className="w-full bg-transparent text-gray-700 text-sm px-3 py-2 outline-none cursor-pointer hover:bg-gray-50 rounded transition-colors"
+                            >
+                              {MJ_MODEL_OPTIONS.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex items-center bg-gray-300 border-t border-gray-400/40">
+                          <div className="md:w-48 py-3 text-sm text-gray-800 font-medium pl-4 bg-gray-200/50">提示词</div>
+                          <div className="flex-1 bg-white p-1 relative">
+                            <SearchableSelect
+                              options={MJ_PROMPT_OPTIONS}
+                              value={genConfig.mjPrompt}
+                              onChange={(val) => handleGenChange('mjPrompt', val)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 配置2：image 风格转化 */}
+                    <div>
+                      <h4 className="text-gray-700 mb-4 font-bold border-l-4 border-green-600 pl-3">配置 2 · image 风格转化</h4>
+                      <div className="bg-gray-300 border border-gray-300 rounded">
+                        <div className="flex items-center bg-gray-300">
+                          <div className="md:w-48 py-3 text-sm text-gray-800 font-medium pl-4 bg-gray-200/50">模型选择</div>
+                          <div className="flex-1 bg-white p-1">
+                            <select
+                              value={genConfig.styleModel}
+                              onChange={(e) => handleGenChange('styleModel', e.target.value)}
+                              className="w-full bg-transparent text-gray-700 text-sm px-3 py-2 outline-none cursor-pointer hover:bg-gray-50 rounded transition-colors"
+                            >
+                              {STYLE_MODEL_OPTIONS.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex items-center bg-gray-300 border-t border-gray-400/40">
+                          <div className="md:w-48 py-3 text-sm text-gray-800 font-medium pl-4 bg-gray-200/50">提示词</div>
+                          <div className="flex-1 bg-white p-1 relative">
+                            <SearchableSelect
+                              options={STYLE_PROMPT_OPTIONS}
+                              value={genConfig.stylePrompt}
+                              onChange={(val) => handleGenChange('stylePrompt', val)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

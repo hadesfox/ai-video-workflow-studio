@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MainTab, AssetSubTab, VideoSubTab, ReviewSubTab, MasterLibSubTab, Project, Asset, Episode, VideoSettings, TimelineClip, WorldviewEntry, ConfigKeys, AgentSettings, ProjectGroup, UserAccount, Material, MaterialType } from './types';
+import { MainTab, AssetSubTab, VideoSubTab, ReviewSubTab, MasterLibSubTab, Project, Asset, Episode, VideoSettings, TimelineClip, WorldviewEntry, ConfigKeys, AgentSettings, ProjectGroup, UserAccount, Material, MaterialType, GenerationSettings, DEFAULT_GENERATION_SETTINGS } from './types';
 import ProjectSelection from './components/ProjectSelection';
 import AssetManagement from './components/AssetManagement';
 import StageMasterLib from './components/StageMasterLib'; 
@@ -12,7 +12,7 @@ import BackendManagement from './components/BackendManagement';
 import PersonalCenter from './components/PersonalCenter';
 import PartnerCollaboration from './components/PartnerCollaboration';
 import MaterialLibrary from './components/MaterialLibrary';
-import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap, LayoutDashboard, UserCircle, ChevronLeft, RefreshCw, Cloud, LayoutGrid, Disc, Users2, Library } from 'lucide-react';
+import { Terminal, Settings, Lock, User, Mail, ArrowRight, Loader2, AlertCircle, LogOut, KeyRound, Palette, Sun, Moon, Sprout, Zap, LayoutDashboard, UserCircle, ChevronLeft, ChevronRight, RefreshCw, Cloud, LayoutGrid, Disc, Users2, Library } from 'lucide-react';
 import { createSampleShots } from './demo/shotCase';
 
 // Default Settings Helper
@@ -267,6 +267,7 @@ const App: React.FC = () => {
   const [masterLibSubTab, setMasterLibSubTab] = useState<MasterLibSubTab>(MasterLibSubTab.SEEDANCE);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isHeaderToolsOpen, setIsHeaderToolsOpen] = useState(false);
   
   const [isBackendOpen, setIsBackendOpen] = useState(false);
   const [isPersonalCenterOpen, setIsPersonalCenterOpen] = useState(false);
@@ -301,6 +302,7 @@ const App: React.FC = () => {
   const [materials, setMaterials] = useState<Material[]>(() => createDemoMaterials()); // 素材库为全局资源，与项目解耦
   const [worldview, setWorldview] = useState<WorldviewEntry[]>([]); 
   const [globalSettings, setGlobalSettings] = useState<Record<ConfigKeys, AgentSettings>>(createDefaultSettings()); 
+  const [generationSettings, setGenerationSettings] = useState<GenerationSettings>(DEFAULT_GENERATION_SETTINGS);
   
   const [episodes, setEpisodes] = useState<Episode[]>(() => [
     { id: 'ep1', name: '第一集：觉醒', scriptContent: `[场景：雨夜街道]...`, shots: [] },
@@ -339,8 +341,9 @@ const App: React.FC = () => {
     setCurrentTab(MainTab.ASSETS);
   };
 
-  const handleSettingsSave = (newSettings: Record<ConfigKeys, AgentSettings>) => {
+  const handleSettingsSave = (newSettings: Record<ConfigKeys, AgentSettings>, newGenerationSettings: GenerationSettings) => {
       setGlobalSettings(newSettings);
+      setGenerationSettings(newGenerationSettings);
       setIsSettingsOpen(false);
   };
 
@@ -617,6 +620,8 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
+             {/* 可折叠功能按钮组 */}
+             <div className={`relative flex items-center gap-2 transition-all duration-300 ${isHeaderToolsOpen ? 'max-w-[560px] opacity-100' : 'max-w-0 opacity-0 pointer-events-none overflow-hidden'}`}>
              {project && (
                 <>
                    <div className="flex items-center gap-2 bg-theme-card border border-theme-border/50 px-3 py-1.5 rounded-full shadow-inner">
@@ -630,7 +635,6 @@ const App: React.FC = () => {
                 </>
              )}
              
-             <div className="flex items-center gap-2 relative">
                 <button
                   onClick={() => setCurrentTab(MainTab.MATERIAL_LIB)}
                   className={`flex items-center gap-1.5 p-2 transition-colors ${currentTab === MainTab.MATERIAL_LIB ? 'text-blue-400' : 'text-slate-500 hover:text-blue-400'}`}
@@ -689,6 +693,24 @@ const App: React.FC = () => {
                 )}
              </div>
 
+             {/* 全局设置 */}
+             <button
+               onClick={() => setIsSettingsOpen(true)}
+               className="p-2 text-slate-500 hover:text-blue-400 transition-colors"
+               title="全局设置"
+             >
+               <Settings size={18} />
+             </button>
+
+             {/* 展开 / 收起功能按钮 */}
+             <button
+               onClick={() => setIsHeaderToolsOpen(v => !v)}
+               className="p-1.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+               title={isHeaderToolsOpen ? '收起功能菜单' : '展开功能菜单'}
+             >
+               {isHeaderToolsOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+             </button>
+
              <button 
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-800 hover:border-blue-500 transition-all shadow-lg"
@@ -739,6 +761,7 @@ const App: React.FC = () => {
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)}
         currentSettings={globalSettings}
+        currentGenerationSettings={generationSettings}
         onSave={handleSettingsSave}
       />
     </div>
