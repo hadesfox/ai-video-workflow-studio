@@ -217,6 +217,8 @@ export interface GenerationSettings {
   directModel: string;
   /** mj 转 image - 配置1 mj 出图 */
   mjModel: string;
+  /** mj 转 image - 配置1 提示词模型 */
+  mjPromptModel: string;
   mjPrompt: string;
   /** mj 转 image - 配置2 image 风格转化 */
   styleModel: string;
@@ -229,6 +231,7 @@ export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
   template: 'IMAGE_DIRECT',
   directModel: 'gptimage2',
   mjModel: 'Midjourney v7',
+  mjPromptModel: 'Gemini 3 Flash (标准)',
   mjPrompt: 'MJ出图-通用',
   styleModel: 'Gemini 3 Pro (高智)',
   stylePrompt: '风格转化-通用',
